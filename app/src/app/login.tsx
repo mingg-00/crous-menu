@@ -1,60 +1,58 @@
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 
-// ponytail: email code only; add Sign in with Apple / Google before store submission.
+// Expo Go: exp://<host>/--/..., builds: crousapp://... — both must be in Supabase's Redirect URLs.
+const redirectTo = makeRedirectUri();
+
+// Supabase OAuth via the system browser (works in Expo Go). Flow from
+// https://supabase.com/docs/guides/auth/native-mobile-deep-linking
+// ponytail: Google only; add Sign in with Apple before App Store submission (guideline 4.8).
+async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, skipBrowserRedirect: true },
+  });
+  if (error) throw error;
+  const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (res.type !== 'success') return false; // user closed the browser
+  const { params, errorCode } = QueryParams.getQueryParams(res.url);
+  if (errorCode || params.error) throw new Error(params.error_description ?? errorCode ?? params.error);
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: params.access_token,
+    refresh_token: params.refresh_token,
+  });
+  if (sessionError) throw sessionError;
+  return true;
+}
+
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(action: () => Promise<{ error: Error | null }>, onSuccess: () => void) {
+  async function onPress() {
     setBusy(true);
     setError(null);
-    const { error } = await action();
-    setBusy(false);
-    if (error) setError(error.message);
-    else onSuccess();
+    try {
+      if (await signInWithGoogle()) router.back();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
-
-  const sendCode = () => run(() => supabase.auth.signInWithOtp({ email: email.trim() }), () => setSent(true));
-  const verify = () =>
-    run(() => supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' }), () => router.back());
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder={t.email}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="email"
-        editable={!sent}
-      />
-      {!sent && <Button title={t.sendCode} onPress={sendCode} disabled={busy || !email.includes('@')} />}
-      {sent && (
-        <>
-          <Text style={styles.hint}>{t.codeSent}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t.code}
-            value={code}
-            onChangeText={setCode}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-            maxLength={10}
-          />
-          <Button title={t.verify} onPress={verify} disabled={busy || code.trim().length < 6} />
-        </>
-      )}
+      <Pressable style={styles.button} onPress={onPress} disabled={busy} accessibilityRole="button">
+        <Text style={styles.buttonText}>{t.continueWithGoogle}</Text>
+      </Pressable>
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
@@ -62,7 +60,7 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  hint: { color: '#444' },
+  button: { borderWidth: 1, borderColor: '#747775', borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
+  buttonText: { fontSize: 16, fontWeight: '500', color: '#1f1f1f' },
   error: { color: '#c00' },
 });

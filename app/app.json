@@ -29,7 +29,8 @@
         {
           "locationWhenInUsePermission": "Your location is used to show the Crous restaurants closest to you."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "scheme": "crousapp"
   }

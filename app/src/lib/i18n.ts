@@ -16,11 +16,7 @@ const en = {
   logout: 'Log out',
   reviewError: 'Could not save. Please try again.',
   login: 'Log in',
-  email: 'Email',
-  sendCode: 'Send code',
-  codeSent: 'We emailed you a code. Enter it below.',
-  code: 'Code',
-  verify: 'Log in',
+  continueWithGoogle: 'Continue with Google',
 };
 
 const strings: Record<string, typeof en> = {
@@ -41,11 +37,7 @@ const strings: Record<string, typeof en> = {
     logout: 'Se déconnecter',
     reviewError: "Échec de l'enregistrement. Réessayez.",
     login: 'Connexion',
-    email: 'E-mail',
-    sendCode: 'Envoyer le code',
-    codeSent: 'Un code vous a été envoyé par e-mail. Saisissez-le ci-dessous.',
-    code: 'Code',
-    verify: 'Se connecter',
+    continueWithGoogle: 'Continuer avec Google',
   },
   ko: {
     nearby: '주변 식당',
@@ -63,11 +55,7 @@ const strings: Record<string, typeof en> = {
     logout: '로그아웃',
     reviewError: '저장하지 못했습니다. 다시 시도해 주세요.',
     login: '로그인',
-    email: '이메일',
-    sendCode: '코드 받기',
-    codeSent: '이메일로 받은 코드를 입력하세요.',
-    code: '코드',
-    verify: '로그인',
+    continueWithGoogle: 'Google로 계속하기',
   },
 };
 
