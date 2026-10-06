@@ -1,9 +1,11 @@
+cryptography==50.0.2
 fastapi==0.142.2
 httpx==0.28.1
 openai==3.24.0
 psycopg==3.3.6
 psycopg-binary==3.3.6
 psycopg-pool==3.3.3
+PyJWT==2.15.1
 pytest==9.1.1
 python-dotenv==1.2.4
 uvicorn==0.54.0

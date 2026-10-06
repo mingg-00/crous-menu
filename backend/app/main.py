@@ -6,9 +6,11 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from app import db
+from app.auth import current_user, optional_user
 from app.translate import translate_texts
 
 UPSTREAM = "https://api.croustillant.menu/v1"
@@ -90,14 +92,22 @@ async def nearby(
     ]
 
 
+def today() -> date:
+    return datetime.now(PARIS).date()
+
+
+def menu_path(code: int, day: date) -> str:
+    return f"/restaurants/{code}/menu/{day:%d-%m-%Y}"
+
+
 @app.get("/restaurants/{code}/menu")
 async def menu(
     code: int,
     day: date | None = Query(None, alias="date"),
     lang: Literal["fr", "en", "ko"] = "fr",
 ):
-    day = day or datetime.now(PARIS).date()
-    data = await upstream(f"/restaurants/{code}/menu/{day:%d-%m-%Y}", ttl=3600)
+    day = day or today()
+    data = await upstream(menu_path(code, day), ttl=3600)
     if not data:
         raise HTTPException(404, "No menu for this date")
     meals = [
@@ -121,3 +131,39 @@ async def menu(
                 for p in c["plats"]:
                     p["libelle"] = tr.get(p["libelle"], p["libelle"])
     return {"date": day.isoformat(), "repas": meals}
+
+
+Meal = Literal["matin", "midi", "soir"]
+
+
+class ReviewIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field("", max_length=500)
+
+
+@app.get("/restaurants/{code}/reviews")
+async def reviews(
+    code: int,
+    day: date | None = Query(None, alias="date"),
+    meal: Meal = "midi",
+    viewer: str | None = Depends(optional_user),
+):
+    rows = await db.list_reviews(code, day or today(), meal, viewer)
+    average = round(sum(r["rating"] for r in rows) / len(rows), 1) if rows else None
+    return {"count": len(rows), "average": average, "reviews": rows}
+
+
+@app.put("/restaurants/{code}/reviews/mine", status_code=204)
+async def write_review(code: int, body: ReviewIn, meal: Meal = "midi", user: str = Depends(current_user)):
+    """Create or replace the caller's review of today's meal. Only meals actually on today's menu."""
+    day = today()
+    data = await upstream(menu_path(code, day), ttl=3600)
+    if not data or meal not in {m["type"] for m in data["repas"]}:
+        raise HTTPException(404, "This meal is not on today's menu")
+    await db.upsert_review(code, day, meal, user, body.rating, body.comment.strip())
+
+
+@app.delete("/restaurants/{code}/reviews/mine", status_code=204)
+async def remove_review(code: int, meal: Meal = "midi", user: str = Depends(current_user)):
+    if not await db.delete_review(code, today(), meal, user):
+        raise HTTPException(404, "No review to delete")

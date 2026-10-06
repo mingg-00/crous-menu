@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Reviews } from '../../components/Reviews';
 import { fetchTodayMenu, type Menu } from '../../lib/api';
 import { lang, t } from '../../lib/i18n';
 
@@ -40,6 +41,7 @@ export default function RestaurantMenu() {
               ))}
             </View>
           ))}
+          {menu.repas.some((m) => m.type === 'midi') && <Reviews code={Number(code)} />}
         </ScrollView>
       )}
     </>
