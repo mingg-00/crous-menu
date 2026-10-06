@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { fetchTodayMenu, type Menu } from '../../lib/api';
-import { t } from '../../lib/i18n';
+import { lang, t } from '../../lib/i18n';
 
 export default function RestaurantMenu() {
   const { code, nom } = useLocalSearchParams<{ code: string; nom?: string }>();
@@ -11,7 +11,7 @@ export default function RestaurantMenu() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetchTodayMenu(Number(code)).then(setMenu, () => setError(true));
+    fetchTodayMenu(Number(code), lang).then(setMenu, () => setError(true));
   }, [code]);
 
   return (

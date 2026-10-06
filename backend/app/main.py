@@ -1,20 +1,33 @@
 import math
 import time
+from contextlib import asynccontextmanager
 from datetime import date, datetime
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 
+from app import db
+from app.translate import translate_texts
+
 UPSTREAM = "https://api.croustillant.menu/v1"
 PARIS = ZoneInfo("Europe/Paris")
 STUDENT_TYPES = {1, 2}  # upstream /restaurants/types: 1 Restaurant, 2 Cafétéria
 
-app = FastAPI(title="Crous App API")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await db.init()
+    yield
+    await db.pool.close()
+
+
+app = FastAPI(title="Crous App API", lifespan=lifespan)
 client = httpx.AsyncClient(base_url=UPSTREAM, timeout=10)
 
 # All app users share this server's IP against the upstream 200 req/min limit, so cache responses.
-# ponytail: per-process in-memory cache, move to Postgres once menu translations need persisting.
+# ponytail: per-process in-memory cache, fine for a single instance; use a shared cache if scaled out.
 _cache: dict[str, tuple[float, object]] = {}
 
 
@@ -78,21 +91,33 @@ async def nearby(
 
 
 @app.get("/restaurants/{code}/menu")
-async def menu(code: int, day: date | None = Query(None, alias="date")):
+async def menu(
+    code: int,
+    day: date | None = Query(None, alias="date"),
+    lang: Literal["fr", "en", "ko"] = "fr",
+):
     day = day or datetime.now(PARIS).date()
     data = await upstream(f"/restaurants/{code}/menu/{day:%d-%m-%Y}", ttl=3600)
     if not data:
         raise HTTPException(404, "No menu for this date")
-    return {
-        "date": day.isoformat(),
-        "repas": [
-            {
-                "type": m["type"],
-                "categories": [
-                    {"libelle": c["libelle"], "plats": [{"code": p["code"], "libelle": p["libelle"]} for p in c["plats"]]}
-                    for c in m["categories"]
-                ],
-            }
-            for m in data["repas"]
-        ],
-    }
+    meals = [
+        {
+            "type": m["type"],
+            "categories": [
+                {"libelle": c["libelle"], "plats": [{"code": p["code"], "libelle": p["libelle"]} for p in c["plats"]]}
+                for c in m["categories"]
+            ],
+        }
+        for m in data["repas"]
+    ]
+    if lang != "fr":
+        texts = {c["libelle"] for m in meals for c in m["categories"]} | {
+            p["libelle"] for m in meals for c in m["categories"] for p in c["plats"]
+        }
+        tr = await translate_texts(texts, lang)
+        for m in meals:
+            for c in m["categories"]:
+                c["libelle"] = tr.get(c["libelle"], c["libelle"])
+                for p in c["plats"]:
+                    p["libelle"] = tr.get(p["libelle"], p["libelle"])
+    return {"date": day.isoformat(), "repas": meals}

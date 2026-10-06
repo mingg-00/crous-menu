@@ -1,4 +1,4 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8100';
 
 export type Restaurant = {
   code: number;
@@ -30,6 +30,6 @@ export async function fetchNearby(lat: number, lng: number) {
   return (await get<Restaurant[]>(`/restaurants/nearby?lat=${lat}&lng=${lng}`)) ?? [];
 }
 
-export function fetchTodayMenu(code: number) {
-  return get<Menu>(`/restaurants/${code}/menu`);
+export function fetchTodayMenu(code: number, lang: string) {
+  return get<Menu>(`/restaurants/${code}/menu?lang=${lang}`);
 }

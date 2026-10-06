@@ -26,4 +26,6 @@ const strings: Record<string, typeof en> = {
   },
 };
 
-export const t = strings[getLocales()[0]?.languageCode ?? 'en'] ?? en;
+const code = getLocales()[0]?.languageCode ?? 'en';
+export const lang = code in strings ? code : 'en';
+export const t = strings[lang];

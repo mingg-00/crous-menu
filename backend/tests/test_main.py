@@ -48,5 +48,34 @@ def test_menu_converts_iso_date_and_404s_when_missing(monkeypatch):
     assert client.get("/restaurants/21/menu", params={"date": "2026-10-07"}).status_code == 404
 
 
+def test_menu_translates_dishes_and_categories_and_keeps_untranslated_french(monkeypatch):
+    up, _ = fake_upstream({"/restaurants/21/menu/06-10-2026": MENU})
+    monkeypatch.setattr(main, "upstream", up)
+    asked = {}
+
+    async def fake_translate(texts, lang):
+        asked["texts"], asked["lang"] = texts, lang
+        return {"Fruit": "과일"}  # "Dessert" deliberately missing -> stays French
+
+    monkeypatch.setattr(main, "translate_texts", fake_translate)
+    res = TestClient(main.app).get("/restaurants/21/menu", params={"date": "2026-10-06", "lang": "ko"})
+    cat = res.json()["repas"][0]["categories"][0]
+    assert (cat["libelle"], cat["plats"][0]["libelle"]) == ("Dessert", "과일")
+    assert asked == {"texts": {"Dessert", "Fruit"}, "lang": "ko"}
+
+
+def test_menu_in_french_skips_translation(monkeypatch):
+    up, _ = fake_upstream({"/restaurants/21/menu/06-10-2026": MENU})
+    monkeypatch.setattr(main, "upstream", up)
+
+    async def must_not_run(*a):
+        raise AssertionError("translate_texts called for lang=fr")
+
+    monkeypatch.setattr(main, "translate_texts", must_not_run)
+    res = TestClient(main.app).get("/restaurants/21/menu", params={"date": "2026-10-06"})
+    assert res.json()["repas"][0]["categories"][0]["plats"][0]["libelle"] == "Fruit"
+    assert TestClient(main.app).get("/restaurants/21/menu", params={"lang": "de"}).status_code == 422
+
+
 def test_distance_km_bordeaux_to_paris():
     assert 495 < main.distance_km(44.84, -0.58, 48.86, 2.35) < 505
