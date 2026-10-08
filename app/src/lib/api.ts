@@ -51,13 +51,17 @@ export async function fetchReviews(code: number) {
   return (await get<Reviews>(`/restaurants/${code}/reviews`))!;
 }
 
-async function send(method: 'PUT' | 'DELETE', path: string, body?: unknown) {
+/** Throws with the server's string `detail` as message when there is one (e.g. "comment_rejected"). */
+async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unknown) {
   const res = await fetch(API_URL + path, {
     method,
     headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API ${res.status}`);
+  if (!res.ok) {
+    const detail = await res.json().then((b) => b.detail, () => null);
+    throw new Error(typeof detail === 'string' ? detail : `API ${res.status}`);
+  }
 }
 
 export function saveMyReview(code: number, rating: number, comment: string) {
@@ -66,4 +70,12 @@ export function saveMyReview(code: number, rating: number, comment: string) {
 
 export function deleteMyReview(code: number) {
   return send('DELETE', `/restaurants/${code}/reviews/mine`);
+}
+
+export function reportReview(id: number, reason: 'spam' | 'offensive') {
+  return send('POST', `/reviews/${id}/report`, { reason });
+}
+
+export function blockAuthor(id: number) {
+  return send('POST', `/reviews/${id}/block-author`);
 }

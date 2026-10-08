@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app import auth, main
 
 KEY = ec.generate_private_key(ec.SECP256R1())
-ALICE, BOB = str(uuid.uuid4()), str(uuid.uuid4())
+ALICE, BOB, CAROL, DAN = (str(uuid.uuid4()) for _ in range(4))
 TODAY_MENU = {"repas": [{"type": "midi", "categories": []}]}
 
 
@@ -38,8 +38,13 @@ def setup(client, monkeypatch):
         return TODAY_MENU if path == main.menu_path(21, main.today()) else None
 
     monkeypatch.setattr(main, "upstream", upstream)
+
+    async def flagged(text):
+        return "BAD" in text
+
+    monkeypatch.setattr(main, "is_flagged", flagged)
     with psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test", autocommit=True) as conn:
-        conn.execute("TRUNCATE review")
+        conn.execute("TRUNCATE review, report, block")
 
 
 def test_one_review_per_user_per_meal_and_average(client):
@@ -85,3 +90,57 @@ def test_rejects_invalid_reviews(client):
     assert put({"rating": 3, "comment": "x" * 501}) == 422
     assert put({"rating": 3}, code=999) == 404  # no menu today
     assert put({"rating": 3}, meal="soir") == 404  # meal not served today
+
+
+def review_id(client, author):
+    return next(r["id"] for r in client.get("/restaurants/21/reviews", headers=token(author)).json()["reviews"] if r["mine"])
+
+
+def visible_to(client, viewer=None):
+    headers = token(viewer) if viewer else {}
+    return [r["comment"] for r in client.get("/restaurants/21/reviews", headers=headers).json()["reviews"]]
+
+
+def test_flagged_comment_is_rejected(client):
+    res = client.put("/restaurants/21/reviews/mine", json={"rating": 1, "comment": "BAD words"}, headers=token(ALICE))
+    assert (res.status_code, res.json()["detail"]) == (422, "comment_rejected")
+    assert visible_to(client) == []
+
+
+def test_report_hides_for_reporter_then_for_everyone_after_three(client):
+    client.put("/restaurants/21/reviews/mine", json={"rating": 1, "comment": "spam"}, headers=token(ALICE))
+    rid = review_id(client, ALICE)
+    report = lambda who, reason="spam": client.post(f"/reviews/{rid}/report", json={"reason": reason}, headers=token(who))
+
+    assert report(BOB).status_code == 204
+    assert report(BOB).status_code == 204  # repeat report is a no-op, not a second vote
+    assert visible_to(client, BOB) == []
+    assert visible_to(client) == ["spam"]  # one reporter doesn't hide it for others
+
+    report(CAROL, "offensive")
+    assert visible_to(client) == ["spam"]
+    report(DAN)
+    assert visible_to(client) == []  # 3 distinct reporters
+    assert visible_to(client, ALICE) == ["spam"]  # author still sees their own review
+
+    # editing doesn't shake off the reports
+    client.put("/restaurants/21/reviews/mine", json={"rating": 2, "comment": "edited"}, headers=token(ALICE))
+    assert visible_to(client) == []
+
+
+def test_block_hides_all_of_an_authors_reviews_for_the_blocker_only(client):
+    client.put("/restaurants/21/reviews/mine", json={"rating": 1, "comment": "rude"}, headers=token(ALICE))
+    client.put("/restaurants/21/reviews/mine", json={"rating": 5, "comment": "nice"}, headers=token(CAROL))
+    assert client.post(f"/reviews/{review_id(client, ALICE)}/block-author", headers=token(BOB)).status_code == 204
+    assert visible_to(client, BOB) == ["nice"]
+    assert sorted(visible_to(client, CAROL)) == ["nice", "rude"]
+
+
+def test_report_and_block_guards(client):
+    client.put("/restaurants/21/reviews/mine", json={"rating": 3}, headers=token(ALICE))
+    rid = review_id(client, ALICE)
+    assert client.post(f"/reviews/{rid}/report", json={"reason": "spam"}).status_code == 401
+    assert client.post(f"/reviews/{rid}/report", json={"reason": "spam"}, headers=token(ALICE)).status_code == 400
+    assert client.post(f"/reviews/{rid}/block-author", headers=token(ALICE)).status_code == 400
+    assert client.post("/reviews/999999/report", json={"reason": "spam"}, headers=token(BOB)).status_code == 404
+    assert client.post(f"/reviews/{rid}/report", json={"reason": "meh"}, headers=token(BOB)).status_code == 422

@@ -1,9 +1,16 @@
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Button, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { deleteMyReview, fetchReviews, saveMyReview, type Reviews as ReviewsData } from '../lib/api';
+import {
+  blockAuthor,
+  deleteMyReview,
+  fetchReviews,
+  reportReview,
+  saveMyReview,
+  type Reviews as ReviewsData,
+} from '../lib/api';
 import { t } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 
@@ -41,14 +48,40 @@ export function Reviews({ code }: { code: number }) {
     load();
   }, [load, session]);
 
-  async function save(action: () => Promise<void>) {
+  async function save(action: () => Promise<void>, doneMessage?: string) {
     setError(null);
     try {
       await action();
       await load();
-    } catch {
-      setError(t.reviewError);
+      if (doneMessage) Alert.alert(doneMessage);
+    } catch (e) {
+      setError(e instanceof Error && e.message === 'comment_rejected' ? t.commentRejected : t.reviewError);
     }
+  }
+
+  // Android shows at most 3 alert buttons, so report reasons get their own dialog.
+  function openActions(id: number) {
+    Alert.alert(t.more, undefined, [
+      {
+        text: t.report,
+        onPress: () =>
+          Alert.alert(t.report, t.reportReason, [
+            { text: t.reportSpam, onPress: () => save(() => reportReview(id, 'spam'), t.reportDone) },
+            { text: t.reportOffensive, onPress: () => save(() => reportReview(id, 'offensive'), t.reportDone) },
+            { text: t.cancel, style: 'cancel' },
+          ]),
+      },
+      {
+        text: t.block,
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert(t.block, t.blockConfirm, [
+            { text: t.cancel, style: 'cancel' },
+            { text: t.block, style: 'destructive', onPress: () => save(() => blockAuthor(id)) },
+          ]),
+      },
+      { text: t.cancel, style: 'cancel' },
+    ]);
   }
 
   return (
@@ -92,8 +125,15 @@ export function Reviews({ code }: { code: number }) {
 
       {data?.reviews.map((r) => (
         <View key={r.id} style={styles.review}>
-          <Text style={styles.reviewStars}>{stars(r.rating)}</Text>
-          {!!r.comment && <Text>{r.comment}</Text>}
+          <View style={styles.reviewBody}>
+            <Text style={styles.reviewStars}>{stars(r.rating)}</Text>
+            {!!r.comment && <Text>{r.comment}</Text>}
+          </View>
+          {session && !r.mine && (
+            <Pressable onPress={() => openActions(r.id)} accessibilityRole="button" accessibilityLabel={t.more} hitSlop={10}>
+              <Text style={styles.more}>⋯</Text>
+            </Pressable>
+          )}
         </View>
       ))}
     </View>
@@ -110,6 +150,8 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, minHeight: 60, fontSize: 16 },
   link: { color: '#0a7ea4', fontSize: 16, paddingVertical: 8 },
   error: { color: '#c00' },
-  review: { paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  review: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  reviewBody: { flex: 1 },
+  more: { fontSize: 20, color: '#666', paddingHorizontal: 8 },
   reviewStars: { color: '#f5a623' },
 });

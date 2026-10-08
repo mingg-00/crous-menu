@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from app import db
 from app.auth import current_user, optional_user
+from app.moderation import is_flagged
 from app.translate import translate_texts
 
 UPSTREAM = "https://api.croustillant.menu/v1"
@@ -160,10 +161,37 @@ async def write_review(code: int, body: ReviewIn, meal: Meal = "midi", user: str
     data = await upstream(menu_path(code, day), ttl=3600)
     if not data or meal not in {m["type"] for m in data["repas"]}:
         raise HTTPException(404, "This meal is not on today's menu")
-    await db.upsert_review(code, day, meal, user, body.rating, body.comment.strip())
+    comment = body.comment.strip()
+    if await is_flagged(comment):
+        raise HTTPException(422, "comment_rejected")  # the app shows its own localized message for this code
+    await db.upsert_review(code, day, meal, user, body.rating, comment)
 
 
 @app.delete("/restaurants/{code}/reviews/mine", status_code=204)
 async def remove_review(code: int, meal: Meal = "midi", user: str = Depends(current_user)):
     if not await db.delete_review(code, today(), meal, user):
         raise HTTPException(404, "No review to delete")
+
+
+class ReportIn(BaseModel):
+    reason: Literal["spam", "offensive"]
+
+
+async def others_review_author(review_id: int, user: str) -> str:
+    author = await db.review_author(review_id)
+    if author is None:
+        raise HTTPException(404, "No such review")
+    if author == user:
+        raise HTTPException(400, "That is your own review")
+    return author
+
+
+@app.post("/reviews/{review_id}/report", status_code=204)
+async def report(review_id: int, body: ReportIn, user: str = Depends(current_user)):
+    await others_review_author(review_id, user)
+    await db.report_review(review_id, user, body.reason)
+
+
+@app.post("/reviews/{review_id}/block-author", status_code=204)
+async def block_author(review_id: int, user: str = Depends(current_user)):
+    await db.block_user(user, await others_review_author(review_id, user))
