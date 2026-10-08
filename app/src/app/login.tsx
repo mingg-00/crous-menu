@@ -40,7 +40,8 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
-      if (await signInWithGoogle()) router.back();
+      // Opened via deep link there is nothing to go back to
+      if (await signInWithGoogle()) router.canGoBack() ? router.back() : router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
