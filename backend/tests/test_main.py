@@ -55,13 +55,14 @@ def test_menu_translates_dishes_and_categories_and_keeps_untranslated_french(mon
 
     async def fake_translate(texts, lang):
         asked["texts"], asked["lang"] = texts, lang
-        return {"Fruit": "과일"}  # "Dessert" deliberately missing -> stays French
+        return {"Fruit": "과일"}, True  # "Dessert" deliberately missing -> stays French, still translating
 
     monkeypatch.setattr(main, "translate_texts", fake_translate)
     res = TestClient(main.app).get("/restaurants/21/menu", params={"date": "2026-10-06", "lang": "ko"})
     cat = res.json()["repas"][0]["categories"][0]
     assert (cat["libelle"], cat["plats"][0]["libelle"]) == ("Dessert", "과일")
-    assert asked == {"texts": {"Dessert", "Fruit"}, "lang": "ko"}
+    assert res.json()["translating"] is True
+    assert asked == {"texts": ["Dessert", "Fruit"], "lang": "ko"}  # menu order, header first
 
 
 def test_menu_in_french_skips_translation(monkeypatch):
@@ -74,6 +75,7 @@ def test_menu_in_french_skips_translation(monkeypatch):
     monkeypatch.setattr(main, "translate_texts", must_not_run)
     res = TestClient(main.app).get("/restaurants/21/menu", params={"date": "2026-10-06"})
     assert res.json()["repas"][0]["categories"][0]["plats"][0]["libelle"] == "Fruit"
+    assert res.json()["translating"] is False
     assert TestClient(main.app).get("/restaurants/21/menu", params={"lang": "de"}).status_code == 422
 
 

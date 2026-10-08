@@ -121,17 +121,17 @@ async def menu(
         }
         for m in data["repas"]
     ]
+    translating = False
     if lang != "fr":
-        texts = {c["libelle"] for m in meals for c in m["categories"]} | {
-            p["libelle"] for m in meals for c in m["categories"] for p in c["plats"]
-        }
-        tr = await translate_texts(texts, lang)
+        texts = [t for m in meals for c in m["categories"] for t in (c["libelle"], *(p["libelle"] for p in c["plats"]))]
+        tr, translating = await translate_texts(texts, lang)
         for m in meals:
             for c in m["categories"]:
                 c["libelle"] = tr.get(c["libelle"], c["libelle"])
                 for p in c["plats"]:
                     p["libelle"] = tr.get(p["libelle"], p["libelle"])
-    return {"date": day.isoformat(), "repas": meals}
+    # translating: some lines are still French; translations land within ~10s, so the app re-fetches.
+    return {"date": day.isoformat(), "repas": meals, "translating": translating}
 
 
 Meal = Literal["matin", "midi", "soir"]

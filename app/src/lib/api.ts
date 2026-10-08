@@ -18,6 +18,7 @@ export type Menu = {
     type: string;
     categories: { libelle: string; plats: { code: number; libelle: string }[] }[];
   }[];
+  translating: boolean; // some lines still French; the server is translating them in the background
 };
 
 export type Reviews = {

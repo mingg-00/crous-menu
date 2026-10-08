@@ -27,6 +27,7 @@ const en = {
   block: 'Block this user',
   blockConfirm: "You won't see any reviews from this user.",
   cancel: 'Cancel',
+  translating: 'Translating the menu…',
 };
 
 const strings: Record<string, typeof en> = {
@@ -58,6 +59,7 @@ const strings: Record<string, typeof en> = {
     block: 'Bloquer cet utilisateur',
     blockConfirm: 'Vous ne verrez plus aucun avis de cet utilisateur.',
     cancel: 'Annuler',
+    translating: 'Traduction du menu en cours…',
   },
   ko: {
     nearby: '주변 식당',
@@ -86,6 +88,7 @@ const strings: Record<string, typeof en> = {
     block: '이 사용자 차단',
     blockConfirm: '이 사용자의 리뷰가 더 이상 보이지 않습니다.',
     cancel: '취소',
+    translating: '메뉴를 번역하는 중…',
   },
 };
 

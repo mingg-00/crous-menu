@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -8,35 +9,56 @@ from app.db import get_translations, save_translations
 
 log = logging.getLogger(__name__)
 
-MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+# Chosen with eval/translation_eval.py (see eval/REPORT.md): best quality; low effort cuts cost ~3x at equal quality.
+MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.5")
+REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "low")
 LANGUAGES = {"en": "English", "ko": "Korean"}  # "fr" is the source language, never translated
 
 _client: AsyncOpenAI | None = None
+_inflight: set[tuple[str, str]] = set()  # (text, lang) being translated right now
+_tasks: set[asyncio.Task] = set()  # strong refs so background tasks aren't garbage-collected
 
 
-async def llm_translate(texts: list[str], lang: str) -> dict[str, str]:
+# Per-language style notes; the shared rules are in system_prompt().
+STYLE = {
+    "en": "Use British/US-neutral menu English. For a French dish with no common English name, keep the French "
+    "name and add a short gloss in parentheses, e.g. \"Parmentier (mashed-potato bake)\".",
+    "ko": "Use natural Korean menu style: short noun phrases, no sentence endings (except greetings such as "
+    "\"Bon appétit\" → \"맛있게 드세요\"). For a French dish with no common Korean name, write it in Hangul and add a "
+    "short gloss in parentheses, e.g. \"파르망티에(으깬 감자 그라탱)\". Use standard spelling (간 당근, not 갈은 당근).",
+}
+
+
+def system_prompt(lang: str) -> str:
+    return (
+        f"You translate menu lines from French university restaurants (Crous) into {LANGUAGES[lang]} for "
+        "international students who don't read French.\n"
+        "Input: a JSON object mapping ids to lines, in the order they appear on the menu, so neighbouring lines "
+        "give context. A line can be a dish, a side, a section header (\"Entrées\", \"Plat du jour - stand 2\"), "
+        "a label (\"Alternative sans viande :\", \"Fait maison\", \"Bio\") or a message (\"Bon appétit\").\n"
+        "Rules:\n"
+        "- Translate the meaning, not the sound: use the everyday name of a food, fish or cheese the reader knows "
+        "(merlu = hake, carottes râpées = grated carrots).\n"
+        "- Labels stay labels: keep them short and keep trailing punctuation such as ':'. "
+        "\"Alternative sans viande\" = meat-free alternative, \"Fait maison\" = homemade, \"Bio\" = organic.\n"
+        "- Don't add or drop information; keep brand and place names.\n"
+        f"- {STYLE[lang]}\n"
+        "Reply with a JSON object mapping the same ids to the translations."
+    )
+
+
+async def llm_translate(texts: list[str], lang: str, model: str = MODEL) -> dict[str, str]:
     """Translate French menu texts in one call. Returns only the entries the model answered validly."""
     global _client
-    # Short timeout: a menu request must not hang on the LLM; callers fall back to French.
-    _client = _client or AsyncOpenAI(timeout=15, max_retries=1)
+    # Runs in the background (see translate_texts), so no user waits on this timeout.
+    _client = _client or AsyncOpenAI(timeout=120, max_retries=1)
     resp = await _client.chat.completions.create(
-        model=MODEL,
-        temperature=0,
+        model=model,
+        # GPT-5-family reasoning models only accept the default temperature.
+        **({"reasoning_effort": REASONING_EFFORT} if model.startswith("gpt-5") else {"temperature": 0}),
         response_format={"type": "json_object"},
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    f"You translate French university-canteen menu items into {LANGUAGES[lang]}. "
-                    "Translate the meaning, not the sound: use the everyday name of a food or fish in the target "
-                    "language instead of transliterating the French word (e.g. merlu = hake), and only keep the "
-                    "French name for classic dishes with no real equivalent. "
-                    "'Alternative sans viande' means a meat-free alternative dish (vegetarian option). "
-                    "Keep them short and natural, as printed on a menu; keep proper and brand names. "
-                    "The user sends a JSON object mapping ids to French texts. "
-                    "Reply with a JSON object mapping the same ids to the translations."
-                ),
-            },
+            {"role": "system", "content": system_prompt(lang)},
             {"role": "user", "content": json.dumps(dict(enumerate(texts)), ensure_ascii=False)},
         ],
     )
@@ -48,26 +70,35 @@ async def llm_translate(texts: list[str], lang: str) -> dict[str, str]:
     }
 
 
-async def translate_texts(texts: set[str], lang: str) -> dict[str, str]:
-    """Translations for `texts`: cached ones from the DB, the rest from the LLM (then cached).
-    Texts that could not be translated are simply absent from the result."""
+async def _translate_and_cache(texts: list[str], lang: str):
     try:
-        found = await get_translations(texts, lang)
+        new = await llm_translate(texts, lang)
+        if new:
+            await save_translations(new, lang)
+    except Exception:
+        log.exception("background translation failed; the next request will retry")
+    finally:
+        _inflight.difference_update((t, lang) for t in texts)
+
+
+async def translate_texts(texts: list[str], lang: str) -> tuple[dict[str, str], bool]:
+    """Cached translations for `texts` (menu order, duplicates allowed), plus whether some are still pending.
+
+    Missing texts are translated in a background task (the LLM takes ~10s), so callers get French for those
+    now and the translation on a later request. Each text is sent to the LLM once even under concurrent requests.
+    """
+    texts = list(dict.fromkeys(texts))
+    try:
+        found = await get_translations(set(texts), lang)
     except Exception:
         # Without the cache every request would hit the LLM, so serve French instead.
         log.exception("translation cache unavailable, serving French")
-        return {}
-    missing = sorted(texts - found.keys())
-    if missing:
-        try:
-            new = await llm_translate(missing, lang)
-        except Exception:
-            log.exception("LLM translation failed, serving French")
-            new = {}
-        if new:
-            try:
-                await save_translations(new, lang)
-            except Exception:
-                log.exception("could not cache translations")  # still return them for this request
-            found |= new
-    return found
+        return {}, False
+    missing = [t for t in texts if t not in found]
+    todo = [t for t in missing if (t, lang) not in _inflight]  # keep menu order: it gives the LLM context
+    if todo:
+        _inflight.update((t, lang) for t in todo)
+        task = asyncio.create_task(_translate_and_cache(todo, lang))
+        _tasks.add(task)
+        task.add_done_callback(_tasks.discard)
+    return found, bool(missing)

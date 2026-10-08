@@ -12,7 +12,24 @@ export default function RestaurantMenu() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetchTodayMenu(Number(code), lang).then(setMenu, () => setError(true));
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const load = () =>
+      fetchTodayMenu(Number(code), lang).then(
+        (m) => {
+          if (cancelled) return;
+          setMenu(m);
+          // Translations land in the background within ~10s; poll a few times until they do.
+          if (m?.translating && ++attempts < 8) timer = setTimeout(load, 4000);
+        },
+        () => !cancelled && setError(true),
+      );
+    load();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [code]);
 
   return (
@@ -26,6 +43,7 @@ export default function RestaurantMenu() {
         <Text style={styles.message}>{t.noMenu}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          {menu.translating && <Text style={styles.note}>{t.translating}</Text>}
           {menu.repas.map((meal) => (
             <View key={meal.type}>
               <Text style={styles.meal}>{t.meals[meal.type] ?? meal.type}</Text>
@@ -55,4 +73,5 @@ const styles = StyleSheet.create({
   categoryTitle: { fontSize: 15, fontWeight: '600', color: '#444', marginBottom: 4 },
   plat: { fontSize: 16, paddingVertical: 2 },
   message: { padding: 24, textAlign: 'center', color: '#666' },
+  note: { color: '#666', marginBottom: 8 },
 });
