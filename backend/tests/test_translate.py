@@ -52,3 +52,22 @@ def test_llm_failure_returns_nothing_and_caches_nothing(fakes, monkeypatch):
     monkeypatch.setattr(translate, "llm_translate", boom)
     assert asyncio.run(translate.translate_texts({"Fruit"}, "ko")) == {}
     assert store == {}
+
+
+def test_db_down_serves_french_without_calling_llm(fakes, monkeypatch):
+    _, llm_calls = fakes
+
+    async def db_down(*a):
+        raise ConnectionError("db down")
+
+    monkeypatch.setattr(translate, "get_translations", db_down)
+    assert asyncio.run(translate.translate_texts({"Fruit"}, "ko")) == {}
+    assert llm_calls == []  # would otherwise re-translate (and pay) on every request
+
+
+def test_cache_write_failure_still_returns_fresh_translations(fakes, monkeypatch):
+    async def db_down(*a):
+        raise ConnectionError("db down")
+
+    monkeypatch.setattr(translate, "save_translations", db_down)
+    assert asyncio.run(translate.translate_texts({"Fruit"}, "ko")) == {"Fruit": "Fruit [ko]"}

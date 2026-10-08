@@ -51,7 +51,12 @@ async def llm_translate(texts: list[str], lang: str) -> dict[str, str]:
 async def translate_texts(texts: set[str], lang: str) -> dict[str, str]:
     """Translations for `texts`: cached ones from the DB, the rest from the LLM (then cached).
     Texts that could not be translated are simply absent from the result."""
-    found = await get_translations(texts, lang)
+    try:
+        found = await get_translations(texts, lang)
+    except Exception:
+        # Without the cache every request would hit the LLM, so serve French instead.
+        log.exception("translation cache unavailable, serving French")
+        return {}
     missing = sorted(texts - found.keys())
     if missing:
         try:
@@ -60,6 +65,9 @@ async def translate_texts(texts: set[str], lang: str) -> dict[str, str]:
             log.exception("LLM translation failed, serving French")
             new = {}
         if new:
-            await save_translations(new, lang)
+            try:
+                await save_translations(new, lang)
+            except Exception:
+                log.exception("could not cache translations")  # still return them for this request
             found |= new
     return found
