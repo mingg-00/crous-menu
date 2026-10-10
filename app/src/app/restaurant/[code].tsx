@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Reactions } from '../../components/Reactions';
 import { Reviews } from '../../components/Reviews';
 import { fetchTodayMenu, type Menu } from '../../lib/api';
 import { lang, t } from '../../lib/i18n';
@@ -45,6 +46,7 @@ export default function RestaurantMenu() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {menu.translating && <Text style={styles.note}>{t.translating}</Text>}
+          {menu.repas.some((m) => m.type === 'midi') && <Reactions code={Number(code)} />}
           {menu.repas.map((meal) => (
             <View key={meal.type} style={styles.card}>
               <View style={styles.mealHeader}>

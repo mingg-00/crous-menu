@@ -87,7 +87,8 @@ def test_cors_allows_the_web_app_origin_only():
     client = TestClient(main.app)
     preflight = lambda origin: client.options(
         "/reviews/1/report",
-        headers={"Origin": origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization"},
+        headers={"Origin": origin, "Access-Control-Request-Method": "POST",
+                 "Access-Control-Request-Headers": "authorization, x-client-id"},  # reactions send X-Client-Id
     )
     ok = preflight("http://localhost:8081")
     assert ok.status_code == 200 and ok.headers["access-control-allow-origin"] == "http://localhost:8081"

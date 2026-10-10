@@ -5,10 +5,7 @@ import uuid
 import jwt
 import psycopg
 import pytest
-from alembic import command
-from alembic.config import Config
 from cryptography.hazmat.primitives.asymmetric import ec
-from fastapi.testclient import TestClient
 
 from app import auth, main
 
@@ -20,18 +17,6 @@ TODAY_MENU = {"repas": [{"type": "midi", "categories": []}]}
 def token(sub, **overrides):
     claims = {"sub": sub, "aud": "authenticated", "iss": auth.ISSUER, "exp": int(time.time()) + 3600} | overrides
     return {"Authorization": "Bearer " + jwt.encode(claims, KEY, algorithm="ES256")}
-
-
-@pytest.fixture(scope="module")
-def client():
-    try:
-        with psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test", autocommit=True, connect_timeout=2) as conn:
-            conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")  # start empty: proves migrations build it
-    except psycopg.OperationalError:
-        pytest.skip("test Postgres not running (docker compose up -d db)")
-    command.upgrade(Config("alembic.ini"), "head")  # DATABASE_URL points at crous_test (conftest)
-    with TestClient(main.app) as c:
-        yield c
 
 
 @pytest.fixture(autouse=True)

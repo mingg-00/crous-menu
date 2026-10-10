@@ -1,15 +1,17 @@
+import asyncio
 import logging
 import math
 import os
 import re
 import time
+import uuid
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -48,7 +50,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=os.environ.get("ALLOWED_ORIGINS", "http://localhost:8081").split(","),
     allow_methods=["GET", "PUT", "POST", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Client-Id"],
 )
 client = httpx.AsyncClient(base_url=UPSTREAM, timeout=10)
 
@@ -177,13 +179,19 @@ async def reviews(
     return {"count": len(rows), "average": average, "reviews": rows}
 
 
-@app.put("/restaurants/{code}/reviews/mine", status_code=204)
-async def write_review(code: int, body: ReviewIn, meal: Meal = "midi", user: str = Depends(current_user)):
-    """Create or replace the caller's review of today's meal. Only meals actually on today's menu."""
+async def require_meal_today(code: int, meal: str) -> date:
+    """Today's date if `meal` is on this restaurant's menu today; reviews and reactions only accept those."""
     day = today()
     data = await upstream(menu_path(code, day), ttl=3600)
     if not data or meal not in {m["type"] for m in data["repas"]}:
         raise HTTPException(404, "This meal is not on today's menu")
+    return day
+
+
+@app.put("/restaurants/{code}/reviews/mine", status_code=204)
+async def write_review(code: int, body: ReviewIn, meal: Meal = "midi", user: str = Depends(current_user)):
+    """Create or replace the caller's review of today's meal. Only meals actually on today's menu."""
+    day = await require_meal_today(code, meal)
     comment = body.comment.strip()
     if await is_flagged(comment):
         raise HTTPException(422, "comment_rejected")  # the app shows its own localized message for this code
@@ -234,3 +242,93 @@ async def delete_account(user: str = Depends(current_user)):
 @app.get("/health")
 async def health():
     return {"ok": True}
+
+
+
+# Reactions: one-tap emoji per anonymous device (X-Client-Id: a random UUID the app keeps), no login needed so that
+# far more people react than write reviews. ponytail: a cleared device can vote again; add per-IP rate limits if abused.
+Reaction = Literal["yum", "good", "meh", "bad"]
+
+
+def _client_id(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        return str(uuid.UUID(value))
+    except ValueError:
+        raise HTTPException(400, "X-Client-Id must be a UUID")
+
+
+def client_id(x_client_id: str | None = Header(None)) -> str:
+    if x_client_id is None:
+        raise HTTPException(400, "X-Client-Id header required")
+    return _client_id(x_client_id)
+
+
+def optional_client_id(x_client_id: str | None = Header(None)) -> str | None:
+    return _client_id(x_client_id)
+
+
+class ReactionIn(BaseModel):
+    kind: Reaction
+
+
+@app.get("/restaurants/{code}/reactions")
+async def reactions(code: int, meal: Meal = "midi", voter: str | None = Depends(optional_client_id)):
+    day = today()
+    counts = (await db.reaction_counts([code], day, meal)).get(code, {})
+    return {"counts": counts, "mine": await db.my_reaction(code, day, meal, voter) if voter else None}
+
+
+@app.put("/restaurants/{code}/reactions/mine", status_code=204)
+async def react(code: int, body: ReactionIn, meal: Meal = "midi", voter: str = Depends(client_id)):
+    await db.set_reaction(code, await require_meal_today(code, meal), meal, voter, body.kind)
+
+
+@app.delete("/restaurants/{code}/reactions/mine", status_code=204)
+async def unreact(code: int, meal: Meal = "midi", voter: str = Depends(client_id)):
+    await db.delete_reaction(code, today(), meal, voter)
+
+
+_MAIN_SECTION = re.compile(r"plat|grill|traditionnel|cha[iî]ne|cuisine|wok|pizza|pasta", re.I)
+_NOT_A_DISH = re.compile(r"non communiqu|ferm[ée]|sous r[ée]serve", re.I)
+
+
+def main_dish(menu: dict | None) -> str | None:
+    """A one-line preview of today's lunch: the first regular dish of a main-course section.
+
+    Skips labels ("Alternative sans viande :") and the meat-free alternative that follows them, so the preview
+    is the dish most people get. ponytail: keyword heuristic over free-text Crous section names.
+    """
+    lunch = next((m for m in (menu or {}).get("repas", []) if m["type"] == "midi"), None)
+    if not lunch:
+        return None
+    sections = [c for c in lunch["categories"] if _MAIN_SECTION.search(c["libelle"])] or lunch["categories"][1:2]
+    for section in sections:
+        for plat in section["plats"]:
+            text = plat["libelle"].strip()
+            if "alternative" in text.lower():
+                break  # the rest of this section is the vegetarian alternative
+            if text and not text.endswith(":") and not _NOT_A_DISH.search(text):
+                return text
+    return None
+
+
+@app.get("/restaurants/today")
+async def today_summary(
+    codes: str = Query(description="comma-separated restaurant codes, at most 30"),
+    lang: Literal["fr", "en", "ko"] = "fr",
+):
+    """Per restaurant: today's lunch preview and reaction counts. Separate from /nearby so the list shows at once."""
+    try:
+        wanted = list(dict.fromkeys(int(c) for c in codes.split(",") if c.strip()))[:30]
+    except ValueError:
+        raise HTTPException(422, "codes must be comma-separated integers")
+    day = today()
+    menus = await asyncio.gather(*(upstream(menu_path(c, day), ttl=3600) for c in wanted))
+    previews = {c: main_dish(m) for c, m in zip(wanted, menus)}
+    if lang != "fr":
+        tr, _ = await translate_texts([p for p in previews.values() if p], lang)
+        previews = {c: tr.get(p, p) if p else None for c, p in previews.items()}
+    counts = await db.reaction_counts(wanted, day, "midi")
+    return {str(c): {"preview": previews[c], "counts": counts.get(c, {})} for c in wanted}

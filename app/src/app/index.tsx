@@ -3,9 +3,19 @@ import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { fetchNearby, type Restaurant } from '../lib/api';
-import { t } from '../lib/i18n';
+import { fetchNearby, fetchTodaySummary, type Restaurant, type TodaySummary } from '../lib/api';
+import { lang, t } from '../lib/i18n';
+import { REACTIONS } from '../lib/reactions';
 import { color, font, MAX_WIDTH, radius, shadow, space } from '../lib/theme';
+
+/** "😋 12  🙂 3", most frequent first; empty when nobody reacted yet. */
+function reactionLine(counts: TodaySummary[string]['counts'] | undefined) {
+  if (!counts) return '';
+  return REACTIONS.filter(({ kind }) => counts[kind])
+    .sort((a, b) => (counts[b.kind] ?? 0) - (counts[a.kind] ?? 0))
+    .map(({ kind, emoji }) => `${emoji} ${counts[kind]}`)
+    .join('  ');
+}
 
 function formatDistance(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
@@ -113,6 +123,17 @@ export default function Nearby() {
     load();
   }, [load]);
 
+  // Today's lunch preview and reactions per card, fetched after the list shows so it never waits on them.
+  const [summary, setSummary] = useState<TodaySummary>({});
+  useEffect(() => {
+    if (!restaurants.length) return;
+    let cancelled = false;
+    fetchTodaySummary(restaurants.map((r) => r.code), lang).then((s) => !cancelled && setSummary(s), () => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurants]);
+
   return (
     <FlatList
       data={restaurants}
@@ -156,7 +177,15 @@ export default function Nearby() {
               <View style={styles.meta}>
                 <Text style={styles.distance}>{formatDistance(item.distance_km)}</Text>
                 {item.type && <Text style={styles.type}>{item.type}</Text>}
+                {!!reactionLine(summary[item.code]?.counts) && (
+                  <Text style={styles.reactions}>{reactionLine(summary[item.code]?.counts)}</Text>
+                )}
               </View>
+              {summary[item.code]?.preview && (
+                <Text style={styles.preview} numberOfLines={1}>
+                  {summary[item.code]?.preview}
+                </Text>
+              )}
             </View>
             <Text style={styles.chevron}>›</Text>
           </Pressable>
@@ -203,6 +232,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   type: { ...font.caption, color: color.ink3 },
+  reactions: { ...font.caption, color: color.ink2 },
+  preview: { ...font.body, fontSize: 15, color: color.ink2 },
   chevron: { fontSize: 28, color: color.ink3, marginLeft: space.sm },
   message: { ...font.body, padding: space.xl, textAlign: 'center', color: color.ink2 },
   footer: { padding: space.lg, gap: space.sm, alignItems: 'center' },

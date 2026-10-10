@@ -102,3 +102,43 @@ async def delete_user_data(user: str):
         await conn.execute("DELETE FROM review WHERE user_id = %s", (user,))
         await conn.execute("DELETE FROM report WHERE reporter = %s", (user,))
         await conn.execute("DELETE FROM block WHERE blocker = %s OR blocked = %s", (user, user))
+
+
+async def reaction_counts(restaurants: list[int], day, meal: str) -> dict[int, dict[str, int]]:
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            """SELECT restaurant, kind, count(*) FROM reaction
+               WHERE restaurant = ANY(%s) AND day = %s AND meal = %s GROUP BY restaurant, kind""",
+            (restaurants, day, meal),
+        )
+        counts: dict[int, dict[str, int]] = {}
+        for restaurant, kind, n in await cur.fetchall():
+            counts.setdefault(restaurant, {})[kind] = n
+        return counts
+
+
+async def my_reaction(restaurant: int, day, meal: str, voter: str) -> str | None:
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            "SELECT kind FROM reaction WHERE restaurant = %s AND day = %s AND meal = %s AND voter = %s",
+            (restaurant, day, meal, voter),
+        )
+        row = await cur.fetchone()
+        return row[0] if row else None
+
+
+async def set_reaction(restaurant: int, day, meal: str, voter: str, kind: str):
+    async with pool.connection() as conn:
+        await conn.execute(
+            """INSERT INTO reaction (restaurant, day, meal, voter, kind) VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (restaurant, day, meal, voter) DO UPDATE SET kind = EXCLUDED.kind, created_at = now()""",
+            (restaurant, day, meal, voter, kind),
+        )
+
+
+async def delete_reaction(restaurant: int, day, meal: str, voter: str):
+    async with pool.connection() as conn:
+        await conn.execute(
+            "DELETE FROM reaction WHERE restaurant = %s AND day = %s AND meal = %s AND voter = %s",
+            (restaurant, day, meal, voter),
+        )
