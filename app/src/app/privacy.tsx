@@ -4,7 +4,7 @@ import { lang } from '../lib/i18n';
 
 // Fill in before publishing: GDPR requires the controller's identity and a contact address.
 const CONTROLLER = 'Minji KIM';
-const CONTACT_EMAIL = '[연락처 이메일]';
+const CONTACT_EMAIL = 'minji04@kyonggi.ac.kr';
 const HOSTING = '[호스팅 업체]'; // the API server's host, once deployed
 const UPDATED = '2026-10-10';
 
