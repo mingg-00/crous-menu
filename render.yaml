@@ -1,0 +1,22 @@
+# Render Blueprint for the API. Secrets (sync: false) are asked once when the Blueprint is created.
+services:
+  - type: web
+    name: crous-menu-api
+    runtime: docker
+    plan: free # switch to a paid instance before sharing widely: free instances sleep after ~15 min idle
+    region: frankfurt # closest to Supabase (Paris) and to users in France
+    rootDir: backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        value: https://csrlbhvxeqvheisntowo.supabase.co
+      - key: DATABASE_URL # Supabase -> Connect -> Session pooler URI (IPv4)
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS # the web app's URL, e.g. https://crous-menu.pages.dev
+        sync: false

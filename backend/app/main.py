@@ -229,3 +229,8 @@ async def delete_account(user: str = Depends(current_user)):
         await auth.delete_auth_user(user)
     except httpx.HTTPError:
         raise HTTPException(502, "Could not delete the login account, please retry")
+
+
+@app.get("/health")
+async def health():
+    return {"ok": True}
