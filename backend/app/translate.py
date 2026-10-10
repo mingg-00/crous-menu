@@ -12,7 +12,24 @@ log = logging.getLogger(__name__)
 # Chosen with eval/translation_eval.py (see eval/REPORT.md): best quality; low effort cuts cost ~3x at equal quality.
 MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.5")
 REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "low")
-LANGUAGES = {"en": "English", "ko": "Korean"}  # "fr" is the source language, never translated
+# "fr" is the source language, never translated. The rest: where this semester's Talence exchange students come from.
+LANGUAGES = {
+    "en": "English",
+    "de": "German",
+    "es": "Spanish",
+    "ko": "Korean",
+    "nl": "Dutch",
+    "it": "Italian",
+    "ja": "Japanese",
+    "sv": "Swedish",
+    "zh-Hant": "Traditional Chinese (Taiwan)",
+    "et": "Estonian",
+    "pt": "Brazilian Portuguese",
+    "da": "Danish",
+    "pl": "Polish",
+    "sk": "Slovak",
+    "tr": "Turkish",
+}
 
 _client: AsyncOpenAI | None = None
 _inflight: set[tuple[str, str]] = set()  # (text, lang) being translated right now
@@ -23,10 +40,18 @@ _tasks: set[asyncio.Task] = set()  # strong refs so background tasks aren't garb
 STYLE = {
     "en": "Use British/US-neutral menu English. For a French dish with no common English name, keep the French "
     "name and add a short gloss in parentheses, e.g. \"Parmentier (mashed-potato bake)\".",
+    "ja": "Use natural Japanese menu style: short noun phrases. For a French dish with no common Japanese name, write "
+    "it in katakana and add a short gloss in parentheses, e.g. \"パルマンティエ（マッシュポテトのグラタン）\".",
+    "zh-Hant": "Use Traditional Chinese characters and Taiwanese food vocabulary (e.g. 馬鈴薯, not 土豆). For a French "
+    "dish with no common Chinese name, keep the French name and add a short gloss in parentheses.",
     "ko": "Use natural Korean menu style: short noun phrases, no sentence endings (except greetings such as "
     "\"Bon appétit\" → \"맛있게 드세요\"). For a French dish with no common Korean name, write it in Hangul and add a "
     "short gloss in parentheses, e.g. \"파르망티에(으깬 감자 그라탱)\". Use standard spelling (간 당근, not 갈은 당근).",
 }
+DEFAULT_STYLE = (
+    "Use the short noun-phrase style of a menu in that language. For a French dish with no common local name, keep "
+    "the French name and add a short gloss in parentheses."
+)
 
 
 def system_prompt(lang: str) -> str:
@@ -42,7 +67,7 @@ def system_prompt(lang: str) -> str:
         "- Labels stay labels: keep them short and keep trailing punctuation such as ':'. "
         "\"Alternative sans viande\" = meat-free alternative, \"Fait maison\" = homemade, \"Bio\" = organic.\n"
         "- Don't add or drop information; keep brand and place names.\n"
-        f"- {STYLE[lang]}\n"
+        f"- {STYLE.get(lang, DEFAULT_STYLE)}\n"
         "Reply with a JSON object mapping the same ids to the translations."
     )
 

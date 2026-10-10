@@ -19,7 +19,9 @@ from app import db
 from app import auth
 from app.auth import current_user, optional_user
 from app.moderation import is_flagged
-from app.translate import translate_texts
+from app.translate import LANGUAGES, translate_texts
+
+Lang = Literal[("fr", *LANGUAGES)]  # type: ignore[valid-type]
 
 UPSTREAM = "https://api.croustillant.menu/v1"
 
@@ -132,7 +134,7 @@ def menu_path(code: int, day: date) -> str:
 async def menu(
     code: int,
     day: date | None = Query(None, alias="date"),
-    lang: Literal["fr", "en", "ko"] = "fr",
+    lang: Lang = "fr",
 ):
     day = day or today()
     data = await upstream(menu_path(code, day), ttl=3600)
@@ -319,7 +321,7 @@ def main_dish(menu: dict | None) -> str | None:
 @app.get("/restaurants/today")
 async def today_summary(
     codes: str = Query(description="comma-separated restaurant codes, at most 30"),
-    lang: Literal["fr", "en", "ko"] = "fr",
+    lang: Lang = "fr",
 ):
     """Per restaurant: today's lunch preview and reaction counts. Separate from /nearby so the list shows at once."""
     try:
