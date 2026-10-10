@@ -1,0 +1,11 @@
+{
+  // Static hosting of the Expo web export on Cloudflare (Workers Builds: build `npx expo export --platform web`,
+  // deploy `npx wrangler deploy`, root directory `app`). The name must equal the Worker name in the dashboard.
+  "name": "crous-menu",
+  "compatibility_date": "2026-10-10",
+  "assets": {
+    "directory": "./dist/",
+    // Deep links like /restaurant/21 have no file of their own: serve index.html and let Expo Router route.
+    "not_found_handling": "single-page-application"
+  }
+}
