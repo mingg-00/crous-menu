@@ -18,25 +18,33 @@ const NEAR_KM = 100; // nearest restaurant farther than this: the visitor isn't 
 type Coords = { latitude: number; longitude: number };
 type Located = { coords: Coords } | { failure: 'denied' | 'unavailable'; detail?: string };
 
-function getPosition(timeout: number): Promise<Located> {
-  return new Promise((resolve) =>
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ coords: p.coords }),
-      (e) => resolve({ failure: e.code === e.PERMISSION_DENIED ? 'denied' : 'unavailable', detail: `${e.code}: ${e.message}` }),
-      { timeout, maximumAge: 5 * 60 * 1000 }, // the timeout does not count the time spent on the permission prompt
-    ),
-  );
-}
+const GIVE_UP_MS = 2 * 60 * 1000; // stop watching eventually so the note doesn't say "finding" forever
 
-// Web: call the browser API directly. expo-location's web version first asks for permission with a request that
-// has no timeout and then asks for the position again, so a browser that can't get a fix hangs forever.
-// A Mac's first fix after a long idle can be slow or fail once, so a failed first attempt gets a longer second try.
-async function locateWeb(): Promise<Located> {
-  if (!('geolocation' in navigator)) return { failure: 'unavailable', detail: 'no geolocation API' };
-  let result = await getPosition(10000);
-  if ('failure' in result && result.failure === 'unavailable') result = await getPosition(20000);
-  if ('failure' in result) console.warn('geolocation failed:', result.detail);
-  return result;
+// Web: watchPosition delivers the first fix whenever the OS has one. There is deliberately no short timeout: a Mac
+// locating over Wi-Fi can take well over 30s (seen in the field: two getCurrentPosition calls timed out at 10s
+// and 20s while an untimed call succeeded), and the list already shows Talence meanwhile. Transient errors
+// ("position unavailable", per-fix timeouts) keep the watch going; only a denial stops it at once.
+// (expo-location's web version isn't used: it asks for permission with an untimed request, then asks again.)
+function locateWeb(): Promise<Located> {
+  if (!('geolocation' in navigator)) return Promise.resolve({ failure: 'unavailable', detail: 'no geolocation API' });
+  return new Promise((resolve) => {
+    let lastError = '';
+    const finish = (result: Located) => {
+      navigator.geolocation.clearWatch(id);
+      clearTimeout(giveUp);
+      if ('failure' in result) console.warn('geolocation failed:', result.detail);
+      resolve(result);
+    };
+    const id = navigator.geolocation.watchPosition(
+      (p) => finish({ coords: p.coords }),
+      (e) => {
+        lastError = `${e.code}: ${e.message}`;
+        if (e.code === e.PERMISSION_DENIED) finish({ failure: 'denied', detail: lastError });
+      },
+      { maximumAge: 5 * 60 * 1000 },
+    );
+    const giveUp = setTimeout(() => finish({ failure: 'unavailable', detail: lastError || 'no position after 2 min' }), GIVE_UP_MS);
+  });
 }
 
 async function locateNative(): Promise<Located> {
