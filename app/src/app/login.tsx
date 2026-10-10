@@ -1,9 +1,9 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
@@ -32,7 +32,18 @@ async function signInWithGoogle() {
   return true;
 }
 
+// Web: full-page redirect (popups get blocked on mobile Safari); supabase-js reads the session from the URL on
+// return (detectSessionInUrl). `next` is the page to come back to, since the redirect drops navigation history.
+async function signInWithGoogleWeb(next: string) {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + next },
+  });
+  if (error) throw error;
+}
+
 export default function Login() {
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +51,7 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
+      if (Platform.OS === 'web') return await signInWithGoogleWeb(next?.startsWith('/') ? next : '/');
       // Opened via deep link there is nothing to go back to
       if (await signInWithGoogle()) router.canGoBack() ? router.back() : router.replace('/');
     } catch (e) {

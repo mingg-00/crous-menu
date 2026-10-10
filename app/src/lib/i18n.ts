@@ -3,7 +3,7 @@ import { getLocales } from 'expo-localization';
 const en = {
   nearby: 'Nearby restaurants',
   noMenu: 'No menu published for today.',
-  locationDenied: 'Allow location access to find restaurants near you.',
+  usingDefaultLocation: 'Location is off, so restaurants are sorted from the Talence campus (Bordeaux).',
   loadError: 'Could not load. Pull down to retry.',
   meals: { matin: 'Breakfast', midi: 'Lunch', soir: 'Dinner' } as Record<string, string>,
   reviewsTitle: "Today's lunch reviews",
@@ -35,7 +35,7 @@ const strings: Record<string, typeof en> = {
   fr: {
     nearby: 'Restaurants à proximité',
     noMenu: "Aucun menu publié pour aujourd'hui.",
-    locationDenied: 'Autorisez la localisation pour trouver les restaurants proches.',
+    usingDefaultLocation: 'Localisation désactivée : restaurants triés depuis le campus de Talence (Bordeaux).',
     loadError: 'Chargement impossible. Tirez vers le bas pour réessayer.',
     meals: { matin: 'Petit-déjeuner', midi: 'Déjeuner', soir: 'Dîner' },
     reviewsTitle: 'Avis sur le déjeuner du jour',
@@ -64,7 +64,7 @@ const strings: Record<string, typeof en> = {
   ko: {
     nearby: '주변 식당',
     noMenu: '오늘 등록된 메뉴가 없습니다.',
-    locationDenied: '주변 식당을 찾으려면 위치 권한을 허용해 주세요.',
+    usingDefaultLocation: '위치 권한이 없어 보르도 탈랑스 캠퍼스 기준으로 보여줍니다.',
     loadError: '불러오지 못했습니다. 아래로 당겨 다시 시도하세요.',
     meals: { matin: '아침', midi: '점심', soir: '저녁' },
     reviewsTitle: '오늘 점심 리뷰',

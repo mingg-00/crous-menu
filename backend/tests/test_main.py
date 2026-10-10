@@ -81,3 +81,14 @@ def test_menu_in_french_skips_translation(monkeypatch):
 
 def test_distance_km_bordeaux_to_paris():
     assert 495 < main.distance_km(44.84, -0.58, 48.86, 2.35) < 505
+
+
+def test_cors_allows_the_web_app_origin_only():
+    client = TestClient(main.app)
+    preflight = lambda origin: client.options(
+        "/reviews/1/report",
+        headers={"Origin": origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization"},
+    )
+    ok = preflight("http://localhost:8081")
+    assert ok.status_code == 200 and ok.headers["access-control-allow-origin"] == "http://localhost:8081"
+    assert "access-control-allow-origin" not in preflight("https://evil.example").headers

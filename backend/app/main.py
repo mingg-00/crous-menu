@@ -1,4 +1,5 @@
 import math
+import os
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -7,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app import db
@@ -27,6 +29,13 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Crous App API", lifespan=lifespan)
+# The web build calls this API from another origin; native apps don't send Origin and aren't affected.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("ALLOWED_ORIGINS", "http://localhost:8081").split(","),
+    allow_methods=["GET", "PUT", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 client = httpx.AsyncClient(base_url=UPSTREAM, timeout=10)
 
 # All app users share this server's IP against the upstream 200 req/min limit, so cache responses.

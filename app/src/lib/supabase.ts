@@ -1,6 +1,6 @@
-import 'expo-sqlite/localStorage/install';
+import './localStorage';
 import { createClient } from '@supabase/supabase-js';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 // Public by design (publishable key); set in app/.env.local
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -11,7 +11,8 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     storage: localStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Web login is a full-page redirect that comes back with the session in the URL; native has no URL to read.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 

@@ -59,7 +59,9 @@ export default function RestaurantMenu() {
               ))}
             </View>
           ))}
-          {menu.repas.some((m) => m.type === 'midi') && <Reviews code={Number(code)} />}
+          {menu.repas.some((m) => m.type === 'midi') && (
+            <Reviews code={Number(code)} returnTo={`/restaurant/${code}?nom=${encodeURIComponent(nom ?? '')}`} />
+          )}
         </ScrollView>
       )}
     </>
