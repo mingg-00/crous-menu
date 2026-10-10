@@ -1,6 +1,6 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -67,6 +67,9 @@ export default function Login() {
         <Text style={styles.buttonText}>{t.continueWithGoogle}</Text>
       </Pressable>
       {error && <Text style={styles.error}>{error}</Text>}
+      <Link href="/privacy" style={styles.privacy}>
+        {t.privacy}
+      </Link>
     </View>
   );
 }
@@ -76,4 +79,5 @@ const styles = StyleSheet.create({
   button: { borderWidth: 1, borderColor: '#747775', borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
   buttonText: { fontSize: 16, fontWeight: '500', color: '#1f1f1f' },
   error: { color: '#c00' },
+  privacy: { color: '#666', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' },
 });

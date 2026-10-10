@@ -131,3 +131,11 @@ async def save_translations(pairs: dict[str, str], lang: str):
                 "INSERT INTO translation (src, lang, dst) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
                 [(src, lang, dst) for src, dst in pairs.items()],
             )
+
+
+async def delete_user_data(user: str):
+    """Everything this app stores about a user, in one transaction. Reports on their reviews go via ON DELETE CASCADE."""
+    async with pool.connection() as conn:
+        await conn.execute("DELETE FROM review WHERE user_id = %s", (user,))
+        await conn.execute("DELETE FROM report WHERE reporter = %s", (user,))
+        await conn.execute("DELETE FROM block WHERE blocker = %s OR blocked = %s", (user, user))

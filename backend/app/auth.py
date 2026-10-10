@@ -1,10 +1,13 @@
 import os
 
+import httpx
 import jwt
 from fastapi import Header, HTTPException
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 ISSUER = f"{SUPABASE_URL}/auth/v1"
+# Server-only admin key (Supabase: Project Settings -> API keys -> secret). Never ship it in the app.
+SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 
 _jwks: jwt.PyJWKClient | None = None
 
@@ -41,3 +44,12 @@ def current_user(authorization: str | None = Header(None)) -> str:
 
 def optional_user(authorization: str | None = Header(None)) -> str | None:
     return _user_id(authorization)
+
+
+async def delete_auth_user(user_id: str):
+    """Delete the Supabase Auth account (email, Google identity). 404 means it's already gone."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        # sb_secret_ keys aren't JWTs: Supabase wants them on `apikey` only, not `Authorization: Bearer`.
+        res = await client.delete(f"{ISSUER}/admin/users/{user_id}", headers={"apikey": SUPABASE_SECRET_KEY})
+    if res.status_code != 404:
+        res.raise_for_status()

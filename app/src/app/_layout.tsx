@@ -7,6 +7,7 @@ export default function Layout() {
     <Stack>
       <Stack.Screen name="index" options={{ title: t.nearby }} />
       <Stack.Screen name="login" options={{ title: t.login, presentation: 'modal' }} />
+      <Stack.Screen name="privacy" options={{ title: t.privacy }} />
     </Stack>
   );
 }

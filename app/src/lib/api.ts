@@ -80,3 +80,7 @@ export function reportReview(id: number, reason: 'spam' | 'offensive') {
 export function blockAuthor(id: number) {
   return send('POST', `/reviews/${id}/block-author`);
 }
+
+export function deleteAccount() {
+  return send('DELETE', '/me');
+}

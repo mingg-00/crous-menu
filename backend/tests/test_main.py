@@ -92,3 +92,12 @@ def test_cors_allows_the_web_app_origin_only():
     ok = preflight("http://localhost:8081")
     assert ok.status_code == 200 and ok.headers["access-control-allow-origin"] == "http://localhost:8081"
     assert "access-control-allow-origin" not in preflight("https://evil.example").headers
+
+
+def test_access_log_redacts_coordinates():
+    import logging
+
+    record = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s"', ("1.2.3.4", "GET", "/restaurants/nearby?lat=44.80&lng=-0.60&limit=5"), None)
+    for f in logging.getLogger("uvicorn.access").filters:
+        f.filter(record)
+    assert record.getMessage() == '1.2.3.4 - "GET /restaurants/nearby?lat=REDACTED&lng=REDACTED&limit=5"'

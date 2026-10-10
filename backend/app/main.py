@@ -1,5 +1,7 @@
+import logging
 import math
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -12,11 +14,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app import db
+from app import auth
 from app.auth import current_user, optional_user
 from app.moderation import is_flagged
 from app.translate import translate_texts
 
 UPSTREAM = "https://api.croustillant.menu/v1"
+
+
+class _RedactCoordinates(logging.Filter):
+    """The privacy policy promises we don't store users' coordinates, so keep them out of access logs."""
+
+    def filter(self, record):
+        record.args = tuple(re.sub(r"(lat|lng)=[^&\s]+", r"\1=REDACTED", a) if isinstance(a, str) else a for a in record.args or ())
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_RedactCoordinates())
 PARIS = ZoneInfo("Europe/Paris")
 STUDENT_TYPES = {1, 2}  # upstream /restaurants/types: 1 Restaurant, 2 Cafétéria
 
@@ -204,3 +218,14 @@ async def report(review_id: int, body: ReportIn, user: str = Depends(current_use
 @app.post("/reviews/{review_id}/block-author", status_code=204)
 async def block_author(review_id: int, user: str = Depends(current_user)):
     await db.block_user(user, await others_review_author(review_id, user))
+
+
+@app.delete("/me", status_code=204)
+async def delete_account(user: str = Depends(current_user)):
+    """In-app account deletion (App Store 5.1.1(v), GDPR erasure). Our data first: if Supabase then fails, a retry
+    finishes the job, whereas the reverse order could leave data with no account to delete it from."""
+    await db.delete_user_data(user)
+    try:
+        await auth.delete_auth_user(user)
+    except httpx.HTTPError:
+        raise HTTPException(502, "Could not delete the login account, please retry")

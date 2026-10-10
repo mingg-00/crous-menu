@@ -28,6 +28,11 @@ const en = {
   blockConfirm: "You won't see any reviews from this user.",
   cancel: 'Cancel',
   translating: 'Translating the menu…',
+  deleteAccount: 'Delete my account',
+  deleteAccountConfirm: 'This permanently deletes your account and all your reviews.',
+  accountDeleted: 'Your account and reviews have been deleted.',
+  deleteAccountError: 'Could not delete your account. Please try again.',
+  privacy: 'Privacy policy',
 };
 
 const strings: Record<string, typeof en> = {
@@ -60,6 +65,11 @@ const strings: Record<string, typeof en> = {
     blockConfirm: 'Vous ne verrez plus aucun avis de cet utilisateur.',
     cancel: 'Annuler',
     translating: 'Traduction du menu en cours…',
+    deleteAccount: 'Supprimer mon compte',
+    deleteAccountConfirm: 'Votre compte et tous vos avis seront définitivement supprimés.',
+    accountDeleted: 'Votre compte et vos avis ont été supprimés.',
+    deleteAccountError: 'Échec de la suppression du compte. Réessayez.',
+    privacy: 'Politique de confidentialité',
   },
   ko: {
     nearby: '주변 식당',
@@ -89,6 +99,11 @@ const strings: Record<string, typeof en> = {
     blockConfirm: '이 사용자의 리뷰가 더 이상 보이지 않습니다.',
     cancel: '취소',
     translating: '메뉴를 번역하는 중…',
+    deleteAccount: '계정 삭제',
+    deleteAccountConfirm: '계정과 작성한 모든 리뷰가 영구적으로 삭제됩니다.',
+    accountDeleted: '계정과 리뷰가 삭제되었습니다.',
+    deleteAccountError: '계정을 삭제하지 못했습니다. 다시 시도해 주세요.',
+    privacy: '개인정보처리방침',
   },
 };
 

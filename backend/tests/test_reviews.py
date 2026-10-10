@@ -144,3 +144,42 @@ def test_report_and_block_guards(client):
     assert client.post(f"/reviews/{rid}/block-author", headers=token(ALICE)).status_code == 400
     assert client.post("/reviews/999999/report", json={"reason": "spam"}, headers=token(BOB)).status_code == 404
     assert client.post(f"/reviews/{rid}/report", json={"reason": "meh"}, headers=token(BOB)).status_code == 422
+
+
+def test_delete_account_purges_only_that_users_data_and_the_auth_account(client, monkeypatch):
+    deleted = []
+
+    async def fake_delete(user_id):
+        deleted.append(user_id)
+
+    monkeypatch.setattr(auth, "delete_auth_user", fake_delete)
+    client.put("/restaurants/21/reviews/mine", json={"rating": 1, "comment": "alice"}, headers=token(ALICE))
+    client.put("/restaurants/21/reviews/mine", json={"rating": 5, "comment": "bob"}, headers=token(BOB))
+    client.put("/restaurants/21/reviews/mine", json={"rating": 4, "comment": "carol"}, headers=token(CAROL))
+    client.post(f"/reviews/{review_id(client, BOB)}/report", json={"reason": "spam"}, headers=token(ALICE))
+    client.post(f"/reviews/{review_id(client, CAROL)}/block-author", headers=token(ALICE))
+    client.post(f"/reviews/{review_id(client, ALICE)}/block-author", headers=token(DAN))
+
+    assert client.delete("/me", headers=token(ALICE)).status_code == 204
+    assert deleted == [ALICE]
+    assert sorted(visible_to(client)) == ["bob", "carol"]
+    with psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test") as conn:
+        leftovers = conn.execute(
+            "SELECT (SELECT count(*) FROM report WHERE reporter = %(u)s)"
+            " + (SELECT count(*) FROM block WHERE blocker = %(u)s OR blocked = %(u)s)",
+            {"u": ALICE},
+        ).fetchone()[0]
+    assert leftovers == 0
+
+
+def test_delete_account_reports_auth_failure_after_purging_data(client, monkeypatch):
+    import httpx
+
+    async def supabase_down(user_id):
+        raise httpx.ConnectError("down")
+
+    monkeypatch.setattr(auth, "delete_auth_user", supabase_down)
+    client.put("/restaurants/21/reviews/mine", json={"rating": 1, "comment": "alice"}, headers=token(ALICE))
+    assert client.delete("/me", headers=token(ALICE)).status_code == 502  # app tells the user to retry
+    assert visible_to(client) == []  # our data is already gone; the retry only has Supabase left to do
+    assert client.delete("/me").status_code == 401

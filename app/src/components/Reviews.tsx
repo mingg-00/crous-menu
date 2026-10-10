@@ -5,6 +5,7 @@ import { Button, Pressable, StyleSheet, Text, TextInput, View } from 'react-nati
 
 import {
   blockAuthor,
+  deleteAccount,
   deleteMyReview,
   fetchReviews,
   reportReview,
@@ -35,6 +36,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
   const [notice, setNotice] = useState<string | null>(null);
   const [actionsFor, setActionsFor] = useState<number | null>(null); // review whose report/block row is open
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
   const mine = data?.reviews.find((r) => r.mine);
 
   useEffect(() => {
@@ -78,6 +80,18 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
     }
   }
 
+  async function removeAccount() {
+    setError(null);
+    try {
+      await deleteAccount();
+      await supabase.auth.signOut({ scope: 'local' }); // the account is gone server-side; just drop the session
+      setConfirmDeleteAccount(false);
+      setNotice(t.accountDeleted);
+    } catch {
+      setError(t.deleteAccountError);
+    }
+  }
+
   // Inline actions rather than Alert: react-native-web's Alert.alert is a no-op.
   return (
     <View style={styles.section}>
@@ -110,6 +124,15 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
           />
           {mine && <Button title={t.delete} color="#c00" onPress={() => save(() => deleteMyReview(code))} />}
           <Button title={t.logout} color="#666" onPress={() => supabase.auth.signOut()} />
+          {confirmDeleteAccount ? (
+            <View style={styles.actions}>
+              <Text style={styles.hint}>{t.deleteAccountConfirm}</Text>
+              <TextButton label={t.deleteAccount} danger onPress={removeAccount} />
+              <TextButton label={t.cancel} onPress={() => setConfirmDeleteAccount(false)} />
+            </View>
+          ) : (
+            <TextButton label={t.deleteAccount} danger onPress={() => setConfirmDeleteAccount(true)} />
+          )}
         </View>
       ) : (
         <Link href={{ pathname: '/login', params: { next: returnTo } }} style={styles.link}>
@@ -118,6 +141,10 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
       )}
       {error && <Text style={styles.error}>{error}</Text>}
       {notice && <Text style={styles.notice}>{notice}</Text>}
+
+      <Link href="/privacy" style={styles.privacyLink}>
+        {t.privacy}
+      </Link>
 
       {data?.reviews.map((r) => (
         <View key={r.id} style={styles.review}>
@@ -179,6 +206,7 @@ const styles = StyleSheet.create({
   hint: { color: '#444' },
   textButton: { color: '#0a7ea4', fontSize: 16, paddingVertical: 4 },
   danger: { color: '#c00' },
+  privacyLink: { color: '#666', fontSize: 13, textDecorationLine: 'underline' },
   more: { fontSize: 20, color: '#666', paddingHorizontal: 8 },
   reviewStars: { color: '#f5a623' },
 });

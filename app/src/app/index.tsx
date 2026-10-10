@@ -55,6 +55,11 @@ export default function Nearby() {
       onRefresh={load}
       ListHeaderComponent={usingDefault ? <Text style={styles.note}>{t.usingDefaultLocation}</Text> : null}
       ListEmptyComponent={error ? <Text style={styles.message}>{error}</Text> : null}
+      ListFooterComponent={
+        <Link href="/privacy" style={styles.privacy}>
+          {t.privacy}
+        </Link>
+      }
       renderItem={({ item }) => (
         <Link href={{ pathname: '/restaurant/[code]', params: { code: item.code, nom: item.nom } }} asChild>
           <Pressable style={styles.row}>
@@ -75,4 +80,5 @@ const styles = StyleSheet.create({
   meta: { marginTop: 4, color: '#666' },
   message: { padding: 24, textAlign: 'center', color: '#666' },
   note: { padding: 12, color: '#666', backgroundColor: '#f6f6f6' },
+  privacy: { padding: 16, color: '#666', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' },
 });
