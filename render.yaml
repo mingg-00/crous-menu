@@ -5,9 +5,7 @@ services:
     runtime: docker
     plan: free # switch to a paid instance before sharing widely: free instances sleep after ~15 min idle
     region: frankfurt # closest to Supabase (Paris) and to users in France
-    rootDir: backend
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    rootDir: backend # Dockerfile and build context resolve relative to this (defaults: ./Dockerfile, .)
     healthCheckPath: /health
     envVars:
       - key: SUPABASE_URL
