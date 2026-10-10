@@ -5,6 +5,8 @@ import uuid
 import jwt
 import psycopg
 import pytest
+from alembic import command
+from alembic.config import Config
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 
@@ -23,10 +25,12 @@ def token(sub, **overrides):
 @pytest.fixture(scope="module")
 def client():
     try:
-        psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test", connect_timeout=2).close()
+        with psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test", autocommit=True, connect_timeout=2) as conn:
+            conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")  # start empty: proves migrations build it
     except psycopg.OperationalError:
         pytest.skip("test Postgres not running (docker compose up -d db)")
-    with TestClient(main.app) as c:  # runs lifespan -> creates tables
+    command.upgrade(Config("alembic.ini"), "head")  # DATABASE_URL points at crous_test (conftest)
+    with TestClient(main.app) as c:
         yield c
 
 

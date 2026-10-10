@@ -6,53 +6,14 @@ pool = AsyncConnectionPool(
     os.environ.get("DATABASE_URL", "postgresql://crous:crous@localhost:5434/crous"), open=False
 )
 
-# ponytail: CREATE IF NOT EXISTS only; switch to Alembic at the first change to an existing table.
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS translation (
-    src  text NOT NULL,
-    lang text NOT NULL,
-    dst  text NOT NULL,
-    PRIMARY KEY (src, lang)
-);
-
--- One review per user per meal (restaurant + day + meal type), so ratings can't be stuffed.
-CREATE TABLE IF NOT EXISTS review (
-    id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    restaurant int NOT NULL,
-    day        date NOT NULL,
-    meal       text NOT NULL,
-    user_id    uuid NOT NULL,
-    rating     smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    comment    text NOT NULL DEFAULT '' CHECK (length(comment) <= 500),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (restaurant, day, meal, user_id)
-);
-
--- Edits keep the review id (upsert), so reports survive edits.
-CREATE TABLE IF NOT EXISTS report (
-    review_id  bigint NOT NULL REFERENCES review(id) ON DELETE CASCADE,
-    reporter   uuid NOT NULL,
-    reason     text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (review_id, reporter)
-);
-
-CREATE TABLE IF NOT EXISTS block (
-    blocker    uuid NOT NULL,
-    blocked    uuid NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (blocker, blocked)
-);
-"""
 
 # ponytail: fixed threshold, no moderator UI; reported reviews are reviewed with SQL on the `report` table.
 HIDE_AFTER_REPORTS = 3
 
 
 async def init():
-    await pool.open()
-    async with pool.connection() as conn:
-        await conn.execute(SCHEMA)
+    """Open the pool and fail fast if the DB is unreachable. The schema is managed by Alembic (migrations/)."""
+    await pool.open(wait=True, timeout=10)
 
 
 async def get_translations(texts: set[str], lang: str) -> dict[str, str]:
