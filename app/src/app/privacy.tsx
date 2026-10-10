@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { lang } from '../lib/i18n';
+import { color, font, MAX_WIDTH, space } from '../lib/theme';
 
 // Fill in before publishing: GDPR requires the controller's identity and a contact address.
 const CONTROLLER = 'Minji KIM';
@@ -11,7 +12,7 @@ const UPDATED = '2026-10-10';
 type Section = [title: string, body: string];
 
 const en: Section[] = [
-  ['Who we are', `Crous Menu is a free, non-commercial app made by ${CONTROLLER} (individual developer). Contact: ${CONTACT_EMAIL}.`],
+  ['Who we are', `Resto U Menu is a free, non-commercial app, not affiliated with the Crous network, made by ${CONTROLLER} (individual developer). Contact: ${CONTACT_EMAIL}.`],
   ['What we collect',
     '• Account: when you sign in with Google, our login provider Supabase stores your email address, name and profile picture from Google. Our server only uses an internal account ID.\n' +
     '• Reviews you post: rating, optional comment, restaurant, date and time. Reviews are shown to other users without your name.\n' +
@@ -29,7 +30,7 @@ const en: Section[] = [
 ];
 
 const fr: Section[] = [
-  ['Qui sommes-nous', `Crous Menu est une application gratuite et non commerciale développée par ${CONTROLLER} (développeur individuel). Contact : ${CONTACT_EMAIL}.`],
+  ['Qui sommes-nous', `Resto U Menu est une application gratuite et non commerciale, sans lien avec le réseau des Crous, développée par ${CONTROLLER} (développeur individuel). Contact : ${CONTACT_EMAIL}.`],
   ['Données collectées',
     '• Compte : lorsque vous vous connectez avec Google, notre prestataire de connexion Supabase conserve votre adresse e-mail, votre nom et votre photo de profil Google. Notre serveur n\'utilise qu\'un identifiant interne.\n' +
     '• Vos avis : note, commentaire facultatif, restaurant, date et heure. Les avis sont affichés sans votre nom.\n' +
@@ -47,7 +48,7 @@ const fr: Section[] = [
 ];
 
 const ko: Section[] = [
-  ['운영자', `Crous Menu는 ${CONTROLLER}(개인 개발자)가 만든 무료·비상업 앱입니다. 문의: ${CONTACT_EMAIL}`],
+  ['운영자', `Resto U Menu는 ${CONTROLLER}(개인 개발자)가 만든 무료·비상업 앱으로, Crous와 관계없는 비공식 앱입니다. 문의: ${CONTACT_EMAIL}`],
   ['수집하는 정보',
     '• 계정: Google로 로그인하면 로그인 서비스 Supabase가 Google에서 받은 이메일 주소, 이름, 프로필 사진을 저장합니다. 우리 서버는 내부 계정 ID만 사용합니다.\n' +
     '• 작성한 리뷰: 별점, 코멘트(선택), 식당, 날짜와 시간. 리뷰는 이름 없이 다른 사용자에게 보입니다.\n' +
@@ -80,7 +81,7 @@ export default function Privacy() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 16, maxWidth: 720 },
-  title: { fontSize: 17, fontWeight: '700' },
-  body: { fontSize: 15, lineHeight: 22, color: '#333' },
+  content: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', padding: space.lg, gap: space.lg },
+  title: { ...font.bodyStrong, fontSize: 17, color: color.ink },
+  body: { ...font.body, fontSize: 15, lineHeight: 23, color: color.ink2 },
 });

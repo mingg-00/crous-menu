@@ -5,6 +5,7 @@ import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-nat
 
 import { fetchNearby, type Restaurant } from '../lib/api';
 import { t } from '../lib/i18n';
+import { color, font, MAX_WIDTH, radius, shadow, space } from '../lib/theme';
 
 function formatDistance(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
@@ -118,32 +119,46 @@ export default function Nearby() {
       keyExtractor={(r) => String(r.code)}
       refreshing={loading}
       onRefresh={load}
+      contentContainerStyle={styles.content}
       ListHeaderComponent={
-        note ? (
-          <View style={styles.note}>
-            <Text style={styles.noteText}>{note}</Text>
-            {detail && <Text style={styles.detail}>{detail}</Text>}
-            {canRetry && (
-              <Pressable onPress={load} accessibilityRole="button" hitSlop={8}>
-                <Text style={styles.retry}>{t.retry}</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : null
+        <View style={styles.header}>
+          <Text style={styles.heading} accessibilityRole="header">
+            {t.nearby}
+          </Text>
+          {note && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>{note}</Text>
+              {detail && <Text style={styles.detail}>{detail}</Text>}
+              {canRetry && (
+                <Pressable onPress={load} accessibilityRole="button" hitSlop={8} style={styles.retry}>
+                  <Text style={styles.retryText}>{t.retry}</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
       }
       ListEmptyComponent={error ? <Text style={styles.message}>{error}</Text> : null}
       ListFooterComponent={
-        <Link href="/privacy" style={styles.privacy}>
-          {t.privacy}
-        </Link>
+        <View style={styles.footer}>
+          <Text style={styles.unofficial}>{t.unofficial}</Text>
+          <Link href="/privacy" style={styles.privacy}>
+            {t.privacy}
+          </Link>
+        </View>
       }
       renderItem={({ item }) => (
-        <Link href={{ pathname: '/restaurant/[code]', params: { code: item.code, nom: item.nom } }} asChild>
-          <Pressable style={styles.row}>
-            <Text style={styles.name}>{item.nom}</Text>
-            <Text style={styles.meta}>
-              {formatDistance(item.distance_km)} · {item.type}
-            </Text>
+        // Card style on Link: asChild forwards it to the Pressable.
+        <Link href={{ pathname: '/restaurant/[code]', params: { code: item.code, nom: item.nom } }} asChild style={styles.card}>
+          <Pressable>
+            <View style={styles.cardBody}>
+              <Text style={styles.name}>{item.nom}</Text>
+              <View style={styles.meta}>
+                <Text style={styles.distance}>{formatDistance(item.distance_km)}</Text>
+                {item.type && <Text style={styles.type}>{item.type}</Text>}
+              </View>
+            </View>
+            <Text style={styles.chevron}>›</Text>
           </Pressable>
         </Link>
       )}
@@ -152,13 +167,45 @@ export default function Nearby() {
 }
 
 const styles = StyleSheet.create({
-  row: { padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#ccc' },
-  name: { fontSize: 17, fontWeight: '600' },
-  meta: { marginTop: 4, color: '#666' },
-  message: { padding: 24, textAlign: 'center', color: '#666' },
-  note: { padding: 12, gap: 6, backgroundColor: '#f6f6f6' },
-  noteText: { color: '#666' },
-  detail: { color: '#999', fontSize: 12 },
-  retry: { color: '#0a7ea4', fontSize: 15 },
-  privacy: { padding: 16, color: '#666', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' },
+  content: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', padding: space.lg, gap: space.md },
+  header: { gap: space.md, marginBottom: space.xs },
+  heading: { ...font.heading, color: color.ink },
+  note: { padding: space.md, gap: space.sm, backgroundColor: color.brandTint, borderRadius: radius.md },
+  noteText: { ...font.body, fontSize: 15, color: color.ink2 },
+  detail: { ...font.caption, color: color.ink3 },
+  retry: {
+    alignSelf: 'flex-start',
+    paddingVertical: space.sm,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    backgroundColor: color.brand,
+  },
+  retryText: { ...font.bodyStrong, fontSize: 15, color: '#fff' },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: space.lg,
+    backgroundColor: color.surface,
+    borderRadius: radius.md,
+    ...shadow,
+  },
+  cardBody: { flex: 1, gap: space.sm },
+  name: { ...font.title, fontSize: 17, color: color.ink },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  distance: {
+    ...font.caption,
+    fontWeight: '700',
+    color: color.brandPressed,
+    backgroundColor: color.brandTint,
+    paddingHorizontal: space.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  type: { ...font.caption, color: color.ink3 },
+  chevron: { fontSize: 28, color: color.ink3, marginLeft: space.sm },
+  message: { ...font.body, padding: space.xl, textAlign: 'center', color: color.ink2 },
+  footer: { padding: space.lg, gap: space.sm, alignItems: 'center' },
+  unofficial: { ...font.caption, color: color.ink3, textAlign: 'center' },
+  privacy: { ...font.caption, color: color.ink3, textAlign: 'center', textDecorationLine: 'underline' },
 });

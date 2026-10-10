@@ -1,6 +1,7 @@
-# Crous Menu
+# Resto U Menu
 
 Daily menus of French university restaurants (Crous), translated into English and Korean, with lunch reviews.
+Unofficial: not affiliated with the Crous network.
 Built for international students in Bordeaux; web first, then iOS/Android from the same Expo codebase.
 
 - **App** (`app/`): Expo / React Native + Expo Router, TypeScript. Runs on web, iOS and Android.

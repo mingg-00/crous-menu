@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
   blockAuthor,
@@ -14,6 +14,7 @@ import {
 } from '../lib/api';
 import { t } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
+import { color, font, radius, shadow, space } from '../lib/theme';
 
 const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
@@ -21,6 +22,19 @@ function TextButton({ label, onPress, danger }: { label: string; onPress: () => 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" hitSlop={6}>
       <Text style={[styles.textButton, danger && styles.danger]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      style={({ pressed }) => [styles.primary, pressed && styles.primaryPressed, disabled && styles.primaryDisabled]}>
+      <Text style={styles.primaryText}>{label}</Text>
     </Pressable>
   );
 }
@@ -95,16 +109,33 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
   // Inline actions rather than Alert: react-native-web's Alert.alert is a no-op.
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>{t.reviewsTitle}</Text>
-      <Text style={styles.summary}>
-        {data?.average != null ? `★ ${data.average} (${data.count})` : t.noReviews}
-      </Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title} accessibilityRole="header">
+          {t.reviewsTitle}
+        </Text>
+        <Text style={styles.summary}>
+          {data?.average != null ? (
+            <>
+              <Text style={styles.reviewStars}>★ </Text>
+              {data.average} <Text style={styles.count}>({data.count})</Text>
+            </>
+          ) : (
+            t.noReviews
+          )}
+        </Text>
+      </View>
 
       {session ? (
         <View style={styles.form}>
           <View style={styles.starRow}>
             {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable key={n} onPress={() => setRating(n)} accessibilityRole="button" accessibilityLabel={`${n}/5`} hitSlop={6}>
+              <Pressable
+                key={n}
+                onPress={() => setRating(n)}
+                accessibilityRole="button"
+                accessibilityLabel={`${n}/5`}
+                accessibilityState={{ selected: n === rating }}
+                hitSlop={4}>
                 <Text style={styles.star}>{n <= rating ? '★' : '☆'}</Text>
               </Pressable>
             ))}
@@ -112,46 +143,37 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
           <TextInput
             style={styles.input}
             placeholder={t.commentPlaceholder}
+            placeholderTextColor={color.ink3}
             value={comment}
             onChangeText={setComment}
             maxLength={500}
             multiline
           />
-          <Button
-            title={mine ? t.update : t.submit}
-            disabled={!rating}
-            onPress={() => save(() => saveMyReview(code, rating, comment))}
-          />
-          {mine && <Button title={t.delete} color="#c00" onPress={() => save(() => deleteMyReview(code))} />}
-          <Button title={t.logout} color="#666" onPress={() => supabase.auth.signOut()} />
-          {confirmDeleteAccount ? (
-            <View style={styles.actions}>
-              <Text style={styles.hint}>{t.deleteAccountConfirm}</Text>
-              <TextButton label={t.deleteAccount} danger onPress={removeAccount} />
-              <TextButton label={t.cancel} onPress={() => setConfirmDeleteAccount(false)} />
-            </View>
-          ) : (
-            <TextButton label={t.deleteAccount} danger onPress={() => setConfirmDeleteAccount(true)} />
-          )}
+          <View style={styles.formActions}>
+            <PrimaryButton
+              label={mine ? t.update : t.submit}
+              disabled={!rating}
+              onPress={() => save(() => saveMyReview(code, rating, comment))}
+            />
+            {mine && <TextButton label={t.delete} danger onPress={() => save(() => deleteMyReview(code))} />}
+          </View>
         </View>
       ) : (
-        <Link href={{ pathname: '/login', params: { next: returnTo } }} style={styles.link}>
+        <Link href={{ pathname: '/login', params: { next: returnTo } }} style={styles.loginLink}>
           {t.loginToReview}
         </Link>
       )}
-      {error && <Text style={styles.error}>{error}</Text>}
-      {notice && <Text style={styles.notice}>{notice}</Text>}
-
-      <Link href="/privacy" style={styles.privacyLink}>
-        {t.privacy}
-      </Link>
+      {error && <Text style={styles.error}>⚠︎ {error}</Text>}
+      {notice && <Text style={styles.notice}>✓ {notice}</Text>}
 
       {data?.reviews.map((r) => (
         <View key={r.id} style={styles.review}>
           <View style={styles.reviewRow}>
             <View style={styles.reviewBody}>
-              <Text style={styles.reviewStars}>{stars(r.rating)}</Text>
-              {!!r.comment && <Text>{r.comment}</Text>}
+              <Text style={styles.reviewStars} accessibilityLabel={`${r.rating}/5`}>
+                {stars(r.rating)}
+              </Text>
+              {!!r.comment && <Text style={styles.comment}>{r.comment}</Text>}
             </View>
             {session && !r.mine && (
               <Pressable
@@ -184,29 +206,83 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
             ))}
         </View>
       ))}
+
+      {/* Account actions sit apart from the review form so a destructive tap can't be a slip. */}
+      <View style={styles.footer}>
+        {session &&
+          (confirmDeleteAccount ? (
+            <View style={styles.actions}>
+              <Text style={styles.hint}>{t.deleteAccountConfirm}</Text>
+              <TextButton label={t.deleteAccount} danger onPress={removeAccount} />
+              <TextButton label={t.cancel} onPress={() => setConfirmDeleteAccount(false)} />
+            </View>
+          ) : (
+            <View style={styles.footerRow}>
+              <TextButton label={t.logout} onPress={() => supabase.auth.signOut()} />
+              <TextButton label={t.deleteAccount} danger onPress={() => setConfirmDeleteAccount(true)} />
+            </View>
+          ))}
+        <Link href="/privacy" style={styles.privacyLink}>
+          {t.privacy}
+        </Link>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { marginTop: 8, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#ccc', gap: 8 },
-  title: { fontSize: 22, fontWeight: '700' },
-  summary: { fontSize: 16, color: '#444' },
-  form: { gap: 8 },
-  starRow: { flexDirection: 'row', gap: 8 },
-  star: { fontSize: 32, color: '#f5a623' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, minHeight: 60, fontSize: 16 },
-  link: { color: '#0a7ea4', fontSize: 16, paddingVertical: 8 },
-  error: { color: '#c00' },
-  notice: { color: '#2e7d32' },
-  review: { paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  section: { padding: space.lg, gap: space.md, backgroundColor: color.surface, borderRadius: radius.md, ...shadow },
+  headerRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: space.sm },
+  title: { ...font.title, color: color.ink },
+  summary: { ...font.bodyStrong, color: color.ink },
+  count: { fontWeight: '400', color: color.ink3 },
+  form: { gap: space.md },
+  starRow: { flexDirection: 'row', gap: space.xs },
+  star: { fontSize: 34, lineHeight: 44, minWidth: 44, textAlign: 'center', color: color.star },
+  input: {
+    ...font.body,
+    color: color.ink,
+    borderWidth: 1,
+    borderColor: color.inputBorder,
+    borderRadius: radius.sm,
+    padding: space.md,
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  formActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
+  primary: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: space.xl,
+    borderRadius: radius.pill,
+    backgroundColor: color.brand,
+  },
+  primaryPressed: { backgroundColor: color.brandPressed },
+  primaryDisabled: { opacity: 0.4 },
+  primaryText: { ...font.bodyStrong, color: '#fff' },
+  loginLink: {
+    ...font.bodyStrong,
+    alignSelf: 'flex-start',
+    color: color.brandPressed,
+    backgroundColor: color.brandTint,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  error: { ...font.body, color: color.danger, backgroundColor: color.dangerTint, padding: space.md, borderRadius: radius.sm, overflow: 'hidden' },
+  notice: { ...font.body, color: color.success },
+  review: { paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderColor: color.line },
   reviewRow: { flexDirection: 'row' },
-  reviewBody: { flex: 1 },
-  actions: { marginTop: 8, padding: 8, gap: 8, backgroundColor: '#f6f6f6', borderRadius: 8 },
-  hint: { color: '#444' },
-  textButton: { color: '#0a7ea4', fontSize: 16, paddingVertical: 4 },
-  danger: { color: '#c00' },
-  privacyLink: { color: '#666', fontSize: 13, textDecorationLine: 'underline' },
-  more: { fontSize: 20, color: '#666', paddingHorizontal: 8 },
-  reviewStars: { color: '#f5a623' },
+  reviewBody: { flex: 1, gap: space.xs },
+  comment: { ...font.body, color: color.ink },
+  actions: { marginTop: space.sm, padding: space.md, gap: space.sm, backgroundColor: color.bg, borderRadius: radius.sm },
+  hint: { ...font.body, fontSize: 15, color: color.ink2 },
+  textButton: { ...font.bodyStrong, color: color.ink2, paddingVertical: space.xs },
+  danger: { color: color.danger },
+  footer: { marginTop: space.sm, paddingTop: space.md, gap: space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderColor: color.line },
+  footerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xl },
+  privacyLink: { ...font.caption, color: color.ink3, textDecorationLine: 'underline' },
+  more: { fontSize: 20, color: color.ink3, paddingHorizontal: space.sm },
+  reviewStars: { color: color.star, letterSpacing: 1 },
 });

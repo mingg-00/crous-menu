@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Reviews } from '../../components/Reviews';
 import { fetchTodayMenu, type Menu } from '../../lib/api';
 import { lang, t } from '../../lib/i18n';
+import { color, font, MAX_WIDTH, radius, shadow, space } from '../../lib/theme';
 
 export default function RestaurantMenu() {
   const { code, nom } = useLocalSearchParams<{ code: string; nom?: string }>();
@@ -38,15 +39,20 @@ export default function RestaurantMenu() {
       {error ? (
         <Text style={styles.message}>{t.loadError}</Text>
       ) : menu === undefined ? (
-        <ActivityIndicator style={styles.message} />
+        <ActivityIndicator style={styles.message} color={color.brand} />
       ) : menu === null ? (
         <Text style={styles.message}>{t.noMenu}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {menu.translating && <Text style={styles.note}>{t.translating}</Text>}
           {menu.repas.map((meal) => (
-            <View key={meal.type}>
-              <Text style={styles.meal}>{t.meals[meal.type] ?? meal.type}</Text>
+            <View key={meal.type} style={styles.card}>
+              <View style={styles.mealHeader}>
+                <View style={styles.mealAccent} />
+                <Text style={styles.meal} accessibilityRole="header">
+                  {t.meals[meal.type] ?? meal.type}
+                </Text>
+              </View>
               {meal.categories.map((cat) => (
                 <View key={cat.libelle} style={styles.category}>
                   <Text style={styles.categoryTitle}>{cat.libelle}</Text>
@@ -69,11 +75,22 @@ export default function RestaurantMenu() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  meal: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
-  category: { marginBottom: 16 },
-  categoryTitle: { fontSize: 15, fontWeight: '600', color: '#444', marginBottom: 4 },
-  plat: { fontSize: 16, paddingVertical: 2 },
-  message: { padding: 24, textAlign: 'center', color: '#666' },
-  note: { color: '#666', marginBottom: 8 },
+  content: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', padding: space.lg, gap: space.lg },
+  card: { padding: space.lg, gap: space.lg, backgroundColor: color.surface, borderRadius: radius.md, ...shadow },
+  mealHeader: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  mealAccent: { width: 4, height: 22, borderRadius: 2, backgroundColor: color.brand },
+  meal: { ...font.heading, fontSize: 22, color: color.ink },
+  category: { gap: space.xs },
+  categoryTitle: { ...font.overline, color: color.ink3, marginBottom: 2 },
+  plat: { ...font.body, color: color.ink },
+  message: { ...font.body, padding: space.xl, textAlign: 'center', color: color.ink2 },
+  note: {
+    ...font.body,
+    fontSize: 15,
+    color: color.ink2,
+    padding: space.md,
+    backgroundColor: color.brandTint,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
 });

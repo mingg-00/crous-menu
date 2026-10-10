@@ -3,10 +3,11 @@ import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
+import { color, font, MAX_WIDTH, space } from '../lib/theme';
 
 // Expo Go: exp://<host>/--/..., builds: crousapp://... — both must be in Supabase's Redirect URLs.
 const redirectTo = makeRedirectUri();
@@ -63,6 +64,8 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
+      <Image source={require('../../assets/brand/mark.png')} style={styles.mark} accessibilityIgnoresInvertColors />
+      <Text style={styles.heading}>{t.loginToReview}</Text>
       <Pressable style={styles.button} onPress={onPress} disabled={busy} accessibilityRole="button">
         <Text style={styles.buttonText}>{t.continueWithGoogle}</Text>
       </Pressable>
@@ -75,9 +78,20 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 12 },
-  button: { borderWidth: 1, borderColor: '#747775', borderRadius: 24, paddingVertical: 12, alignItems: 'center' },
+  container: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', padding: space.xl, gap: space.lg, alignItems: 'stretch' },
+  mark: { width: 64, height: 64, alignSelf: 'center', marginTop: space.xl },
+  heading: { ...font.title, color: color.ink, textAlign: 'center', marginBottom: space.sm },
+  // Google's sign-in button stays neutral per its branding guidelines.
+  button: {
+    minHeight: 48,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#747775',
+    borderRadius: 24,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
   buttonText: { fontSize: 16, fontWeight: '500', color: '#1f1f1f' },
-  error: { color: '#c00' },
-  privacy: { color: '#666', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' },
+  error: { ...font.body, color: color.danger },
+  privacy: { ...font.caption, color: color.ink3, textAlign: 'center', textDecorationLine: 'underline' },
 });

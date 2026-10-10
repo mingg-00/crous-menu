@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Crous Menu",
+    "name": "Resto U Menu",
     "slug": "crous-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,9 +11,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#E30613",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false

@@ -37,6 +37,7 @@ const en = {
   accountDeleted: 'Your account and reviews have been deleted.',
   deleteAccountError: 'Could not delete your account. Please try again.',
   privacy: 'Privacy policy',
+  unofficial: 'Unofficial app, not affiliated with Crous. Menus: CROUStillant.',
 };
 
 const strings: Record<string, typeof en> = {
@@ -78,6 +79,7 @@ const strings: Record<string, typeof en> = {
     accountDeleted: 'Votre compte et vos avis ont été supprimés.',
     deleteAccountError: 'Échec de la suppression du compte. Réessayez.',
     privacy: 'Politique de confidentialité',
+    unofficial: 'Application non officielle, sans lien avec les Crous. Menus : CROUStillant.',
   },
   ko: {
     nearby: '주변 식당',
@@ -116,6 +118,7 @@ const strings: Record<string, typeof en> = {
     accountDeleted: '계정과 리뷰가 삭제되었습니다.',
     deleteAccountError: '계정을 삭제하지 못했습니다. 다시 시도해 주세요.',
     privacy: '개인정보처리방침',
+    unofficial: 'Crous와 관계없는 비공식 앱입니다. 메뉴 출처: CROUStillant',
   },
 };
 
