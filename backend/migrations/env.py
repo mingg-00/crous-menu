@@ -1,17 +1,20 @@
 import os
-import re
 
 from alembic import context
 from sqlalchemy import create_engine
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL
 
-# Same DATABASE_URL as the app; SQLAlchemy needs the psycopg (v3) driver spelled out.
-url = os.environ.get("DATABASE_URL", "postgresql://crous:crous@localhost:5434/crous")
-url = re.sub(r"^postgres(ql)?://", "postgresql+psycopg://", url)
+from app.dburl import parse_database_url
+
+# Same DATABASE_URL (and parser) as the app, so both accept the same passwords.
+p = parse_database_url(os.environ.get("DATABASE_URL", "postgresql://crous:crous@localhost:5434/crous"))
+url = URL.create(
+    "postgresql+psycopg", username=p.get("user"), password=p.get("password"),
+    host=p.get("host"), port=p.get("port"), database=p.get("dbname"),
+)
 
 # Log where we connect (never the password), so a malformed DATABASE_URL is obvious in the deploy log.
-_u = make_url(url)
-print(f"migrating {_u.username}@{_u.host}:{_u.port}/{_u.database}")
+print(f"migrating {url.username}@{url.host}:{url.port}/{url.database}")
 
 with create_engine(url).connect() as connection:
     context.configure(connection=connection)

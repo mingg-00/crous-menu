@@ -2,8 +2,10 @@ import os
 
 from psycopg_pool import AsyncConnectionPool
 
+from app.dburl import parse_database_url
+
 pool = AsyncConnectionPool(
-    os.environ.get("DATABASE_URL", "postgresql://crous:crous@localhost:5434/crous"), open=False
+    "", kwargs=parse_database_url(os.environ.get("DATABASE_URL", "postgresql://crous:crous@localhost:5434/crous")), open=False
 )
 
 
