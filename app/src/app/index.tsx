@@ -10,22 +10,20 @@ function formatDistance(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 }
 
-// Fallback when location is denied, unavailable, slow or far from any Crous: the Talence campus, where the app started.
+// Shown whenever there is no usable position: location denied/unavailable, still being asked, or far from any Crous.
 const TALENCE = { latitude: 44.8065, longitude: -0.6032 };
-const LOCATION_TIMEOUT_MS = 6000; // a pending permission prompt or a stuck GPS fix must not leave the list empty
+const QUICK_LOCATION_MS = 1500; // already-allowed locations resolve well within this; don't make the page wait longer
 const NEAR_KM = 100; // nearest restaurant farther than this: the visitor isn't near a Crous, show the demo area
 
-// ponytail: if the user allows location after the timeout we keep Talence until the next load.
-async function currentCoords() {
-  const locate = async () => {
+type Coords = { latitude: number; longitude: number };
+
+/** The user's position, or null if denied/unavailable. Waits as long as the user needs to answer the permission prompt. */
+async function locate(): Promise<Coords | null> {
+  try {
     const { granted } = await Location.requestForegroundPermissionsAsync();
     return granted ? (await Location.getCurrentPositionAsync()).coords : null;
-  };
-  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATION_TIMEOUT_MS));
-  try {
-    return (await Promise.race([locate(), timeout])) ?? TALENCE;
   } catch {
-    return TALENCE;
+    return null;
   }
 }
 
@@ -35,26 +33,39 @@ export default function Nearby() {
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
+  // Restaurants sorted from `coords`; from Talence (with a note) when the visitor is nowhere near a Crous.
+  const show = useCallback(async (coords: Coords | null, noteIfDefault: string) => {
+    let list = coords ? await fetchNearby(coords.latitude, coords.longitude) : [];
+    let message: string | null = null;
+    if (!coords || (list[0]?.distance_km ?? Infinity) > NEAR_KM) {
+      list = await fetchNearby(TALENCE.latitude, TALENCE.longitude);
+      message = coords ? t.farFromCrous : noteIfDefault;
+    }
+    setRestaurants(list);
+    setNote(message);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let coords = await currentCoords();
-      let list = await fetchNearby(coords.latitude, coords.longitude);
-      let message = coords === TALENCE ? t.usingDefaultLocation : null;
-      if (coords !== TALENCE && (list[0]?.distance_km ?? Infinity) > NEAR_KM) {
-        coords = TALENCE;
-        list = await fetchNearby(coords.latitude, coords.longitude);
-        message = t.farFromCrous;
+      // Never block the list on the permission prompt: show Talence at once, re-sort when the position arrives.
+      let settled = false;
+      const located = locate().then((c) => ((settled = true), c));
+      const quick = await Promise.race([located, new Promise<null>((r) => setTimeout(() => r(null), QUICK_LOCATION_MS))]);
+      await show(quick, settled ? t.usingDefaultLocation : t.locating);
+      setLoading(false);
+      if (!quick && !settled) {
+        const later = await located;
+        if (later) await show(later, t.usingDefaultLocation);
+        else setNote(t.usingDefaultLocation);
       }
-      setRestaurants(list);
-      setNote(message);
     } catch {
       setError(t.loadError);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [show]);
 
   useEffect(() => {
     load();
