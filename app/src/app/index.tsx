@@ -1,9 +1,11 @@
 import * as Location from 'expo-location';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { RestaurantMap } from '../components/RestaurantMap';
 import { fetchNearby, fetchTodaySummary, type Restaurant, type TodaySummary } from '../lib/api';
+import { isDemo, withDemoCounts } from '../lib/demo';
 import { lang, t } from '../lib/i18n';
 import { REACTIONS } from '../lib/reactions';
 import { color, font, MAX_WIDTH, radius, shadow, space } from '../lib/theme';
@@ -79,6 +81,9 @@ export default function Nearby() {
   const [detail, setDetail] = useState<string | null>(null); // browser's reason when the position could not be found
 
   // Restaurants sorted from `coords`; from Talence (with a note) when the visitor is nowhere near a Crous.
+  const [center, setCenter] = useState<Coords>(TALENCE); // map center: the position the list is sorted from
+  const [showUser, setShowUser] = useState(false);
+
   const show = useCallback(async (coords: Coords | null, noteIfDefault: string) => {
     let list = coords ? await fetchNearby(coords.latitude, coords.longitude) : [];
     let message: string | null = null;
@@ -88,6 +93,9 @@ export default function Nearby() {
     }
     setRestaurants(list);
     setNote(message);
+    const usedOwnPosition = !!coords && !message;
+    setCenter(usedOwnPosition ? coords : TALENCE);
+    setShowUser(usedOwnPosition);
   }, []);
 
   const load = useCallback(async () => {
@@ -123,12 +131,18 @@ export default function Nearby() {
     load();
   }, [load]);
 
+  const openRestaurant = useCallback(
+    (r: Restaurant) => router.push({ pathname: '/restaurant/[code]', params: { code: r.code, nom: r.nom } }),
+    [],
+  );
+
   // Today's lunch preview and reactions per card, fetched after the list shows so it never waits on them.
   const [summary, setSummary] = useState<TodaySummary>({});
   useEffect(() => {
     if (!restaurants.length) return;
     let cancelled = false;
-    fetchTodaySummary(restaurants.map((r) => r.code), lang).then((s) => !cancelled && setSummary(s), () => {});
+    const codes = restaurants.map((r) => r.code);
+    fetchTodaySummary(codes, lang).then((s) => !cancelled && setSummary(isDemo ? withDemoCounts(s, codes) : s), () => {});
     return () => {
       cancelled = true;
     };
@@ -146,6 +160,10 @@ export default function Nearby() {
           <Text style={styles.heading} accessibilityRole="header">
             {t.nearby}
           </Text>
+          {isDemo && <Text style={styles.demo}>{t.demoBanner}</Text>}
+          {Platform.OS === 'web' && restaurants.length > 0 && (
+            <RestaurantMap center={center} showUser={showUser} restaurants={restaurants} summary={summary} onSelect={openRestaurant} />
+          )}
           {note && (
             <View style={styles.note}>
               <Text style={styles.noteText}>{note}</Text>
@@ -199,6 +217,7 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', padding: space.lg, gap: space.md },
   header: { gap: space.md, marginBottom: space.xs },
   heading: { ...font.heading, color: color.ink },
+  demo: { ...font.caption, fontWeight: '700', color: color.ink, backgroundColor: '#FFF4C2', padding: space.sm, borderRadius: radius.sm },
   note: { padding: space.md, gap: space.sm, backgroundColor: color.brandTint, borderRadius: radius.md },
   noteText: { ...font.body, fontSize: 15, color: color.ink2 },
   detail: { ...font.caption, color: color.ink3 },

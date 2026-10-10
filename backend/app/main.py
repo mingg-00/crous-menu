@@ -113,6 +113,8 @@ async def nearby(
             "horaires": r.get("horaires", []),
             "image_url": r.get("image_url"),
             "distance_km": round(d, 2),
+            "latitude": r["latitude"],  # for the map
+            "longitude": r["longitude"],
         }
         for d, r in ranked
     ]

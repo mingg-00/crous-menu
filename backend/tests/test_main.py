@@ -33,6 +33,7 @@ def test_nearby_sorts_by_distance_and_keeps_only_located_student_places(monkeypa
     body = res.json()
     assert [r["code"] for r in body] == [21, 22, 7]
     assert body[0]["distance_km"] < 1 < body[-1]["distance_km"]
+    assert (body[0]["latitude"], body[0]["longitude"]) == (AMAZONE["latitude"], AMAZONE["longitude"])
 
 
 def test_menu_converts_iso_date_and_404s_when_missing(monkeypatch):
@@ -76,7 +77,7 @@ def test_menu_in_french_skips_translation(monkeypatch):
     res = TestClient(main.app).get("/restaurants/21/menu", params={"date": "2026-10-06"})
     assert res.json()["repas"][0]["categories"][0]["plats"][0]["libelle"] == "Fruit"
     assert res.json()["translating"] is False
-    assert TestClient(main.app).get("/restaurants/21/menu", params={"lang": "de"}).status_code == 422
+    assert TestClient(main.app).get("/restaurants/21/menu", params={"lang": "xx"}).status_code == 422
 
 
 def test_distance_km_bordeaux_to_paris():

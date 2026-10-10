@@ -12,6 +12,8 @@ export type Restaurant = {
   horaires: string[];
   image_url: string | null;
   distance_km: number;
+  latitude: number;
+  longitude: number;
 };
 
 export type Menu = {

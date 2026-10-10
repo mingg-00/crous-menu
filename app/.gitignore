@@ -42,3 +42,6 @@ yarn-error.*
 
 # wrangler
 .wrangler/
+
+# copied from node_modules by the postinstall script
+/public/maplibre-gl-worker.mjs
