@@ -19,7 +19,10 @@ const STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
 // Floating emojis are CSS so they cost nothing per frame; they stop for users who ask for reduced motion (WCAG 2.3.3).
 const CSS = `
-.ru-marker { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+/* Reset the button look piece by piece, never with "all: unset": that also removes MapLibre's
+   .maplibregl-marker { position: absolute }, and the pins then stack in normal flow, each pushed down by the
+   heights of the pins before it instead of sitting on its coordinates. */
+.ru-marker { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .ru-marker:focus-visible { outline: 3px solid ${color.ink}; outline-offset: 2px; border-radius: 8px; }
 .ru-bubbles { display: flex; gap: 2px; height: 30px; align-items: flex-end; }
 .ru-bubble { font-size: 20px; line-height: 1; animation: ru-float 2.6s ease-in-out infinite; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
