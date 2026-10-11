@@ -98,3 +98,29 @@ def test_cache_write_failure_releases_inflight(fakes, monkeypatch):
     monkeypatch.setattr(translate, "save_translations", db_down)
     run((["Fruit"], "ko"))
     assert translate._inflight == set()
+
+
+def test_prewarm_sends_each_menu_as_its_own_batch_once_per_language(fakes, monkeypatch):
+    from fastapi import HTTPException
+
+    from app import main
+
+    _, llm_calls = fakes
+    near = {"code": 21, "nom": "Resto U", "type": {"code": 1}, "latitude": 44.8065, "longitude": -0.6032}
+    far = {**near, "code": 7, "latitude": 43.3, "longitude": -0.37}  # Pau: outside the prewarm radius
+    lunch = lambda *lines: {"repas": [{"type": "midi", "categories": [{"libelle": lines[0], "plats": [{"code": 1, "libelle": l} for l in lines[1:]]}]}]}
+    menus = {main.menu_path(21, main.today()): lunch("Entrées", "Taboulé", "Ferme"),
+             main.menu_path(7, main.today()): lunch("Dessert", "Fruit")}
+
+    async def upstream(path, ttl):
+        return [near, far] if path == "/restaurants" else menus.get(path)
+
+    monkeypatch.setattr(main, "upstream", upstream)
+    monkeypatch.setattr(main, "PREWARM_TOKEN", "secret")
+    with pytest.raises(HTTPException):
+        asyncio.run(main.prewarm(days=1, authorization="Bearer wrong"))
+
+    first = asyncio.run(main.prewarm(days=1, authorization="Bearer secret"))
+    assert first == {"places": 1, "menus": 1, "lines_sent": 3 * len(translate.LANGUAGES)}
+    assert llm_calls == [["Entrées", "Taboulé", "Ferme"]] * len(translate.LANGUAGES)  # whole menu, in order
+    assert asyncio.run(main.prewarm(days=1, authorization="Bearer secret"))["lines_sent"] == 0  # all cached now

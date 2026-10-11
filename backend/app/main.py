@@ -10,7 +10,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ from app import db
 from app import auth
 from app.auth import current_user, optional_user
 from app.moderation import is_flagged
-from app.translate import LANGUAGES, translate_reviews, translate_texts
+from app.translate import LANGUAGES, translate_now, translate_reviews, translate_texts
 
 Lang = Literal[("fr", *LANGUAGES)]  # type: ignore[valid-type]
 
@@ -129,6 +129,11 @@ def menu_path(code: int, day: date) -> str:
     return f"/restaurants/{code}/menu/{day:%d-%m-%Y}"
 
 
+def menu_lines(meals: list[dict]) -> list[str]:
+    """A menu's lines in menu order: the batch sent to the LLM, both on demand and when prewarming."""
+    return [t for m in meals for c in m["categories"] for t in (c["libelle"], *(p["libelle"] for p in c["plats"]))]
+
+
 @app.get("/restaurants/{code}/menu")
 async def menu(
     code: int,
@@ -151,8 +156,7 @@ async def menu(
     ]
     translating = False
     if lang != "fr":
-        texts = [t for m in meals for c in m["categories"] for t in (c["libelle"], *(p["libelle"] for p in c["plats"]))]
-        tr, translating = await translate_texts(texts, lang)
+        tr, translating = await translate_texts(menu_lines(meals), lang)
         for m in meals:
             for c in m["categories"]:
                 c["libelle"] = tr.get(c["libelle"], c["libelle"])
@@ -250,6 +254,41 @@ async def delete_account(user: str = Depends(current_user)):
         await auth.delete_auth_user(user)
     except httpx.HTTPError:
         raise HTTPException(502, "Could not delete the login account, please retry")
+
+
+PREWARM_TOKEN = os.environ.get("PREWARM_TOKEN", "")
+TALENCE = (44.8065, -0.6032)  # the app's default center; prewarming covers the student places around it
+PREWARM_RADIUS_KM = 20  # ponytail: Bordeaux area only (~15 places); widen if the app spreads to other cities
+
+
+@app.post("/admin/prewarm")
+async def prewarm(days: int = Query(7, ge=1, le=14), authorization: str | None = Header(None)):
+    """Translate the coming days' menus into every language before anyone opens them, so nobody waits ~10s.
+
+    Run daily by .github/workflows/prewarm.yml (menus are published about a week ahead). Each menu goes to the
+    LLM as its own batch in menu order, exactly as on demand, so quality is unchanged; lines already cached
+    are skipped. Anything it misses (a menu edited later, a place farther away) still translates on demand."""
+    if not PREWARM_TOKEN or authorization != f"Bearer {PREWARM_TOKEN}":
+        raise HTTPException(401, "Bad prewarm token")
+    places = [r for r in await nearby(lat=TALENCE[0], lng=TALENCE[1], limit=50) if r["distance_km"] <= PREWARM_RADIUS_KM]
+    start = today()
+    menus = []
+    for offset in range(days):
+        for r in places:
+            try:
+                data = await upstream(menu_path(r["code"], date.fromordinal(start.toordinal() + offset)), ttl=3600)
+            except HTTPException:
+                continue  # upstream hiccup on one menu: skip it, it translates on demand
+            if data:
+                menus.append(menu_lines(data["repas"]))
+    gate = asyncio.Semaphore(8)  # ponytail: fixed concurrency, kind to OpenAI rate limits
+
+    async def one(lines: list[str], lang: str) -> int:
+        async with gate:
+            return await translate_now(lines, lang)
+
+    sent = await asyncio.gather(*(one(lines, lang) for lines in menus for lang in LANGUAGES))
+    return {"places": len(places), "menus": len(menus), "lines_sent": sum(sent)}
 
 
 @app.get("/health")

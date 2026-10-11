@@ -151,6 +151,18 @@ async def translate_texts(texts: list[str], lang: str) -> tuple[dict[str, str], 
     return found, bool(missing)
 
 
+async def translate_now(texts: list[str], lang: str) -> int:
+    """Like translate_texts, but waits for the LLM instead of answering at once (for prewarming ahead of time).
+    Same batch (one menu's missing lines, in menu order) and model, so the same quality. Returns lines sent."""
+    texts = list(dict.fromkeys(texts))
+    found = await get_translations(set(texts), lang)
+    todo = [t for t in texts if t not in found and (t, lang) not in _inflight]
+    if todo:
+        _inflight.update((t, lang) for t in todo)
+        await _translate_and_cache(todo, lang)
+    return len(todo)
+
+
 async def _translate_reviews_and_cache(comments: dict[int, str], lang: str):
     try:
         new = await llm_translate(list(dict.fromkeys(comments.values())), lang, prompt=review_prompt(lang))

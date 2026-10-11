@@ -1,0 +1,16 @@
+# Translates the coming week's menus into every language before lunch, so nobody waits for the LLM.
+# Needs the repo secret PREWARM_TOKEN, equal to the API's PREWARM_TOKEN env var on Render.
+name: Prewarm menu translations
+on:
+  schedule:
+    - cron: "0 4 * * *" # 05:00/06:00 Paris; GitHub may start scheduled runs some minutes late
+  workflow_dispatch: # "Run workflow" button for a manual run
+jobs:
+  prewarm:
+    runs-on: ubuntu-latest
+    steps:
+      # --retry covers a sleeping free Render instance; a first cold run can take several minutes.
+      - run: >
+          curl --fail-with-body --silent --show-error --max-time 1500 --retry 3 --retry-all-errors
+          -X POST -H "Authorization: Bearer ${{ secrets.PREWARM_TOKEN }}"
+          https://crous-menu-api.onrender.com/admin/prewarm

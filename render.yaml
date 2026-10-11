@@ -16,5 +16,7 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: PREWARM_TOKEN # any long random string; the same value goes in the GitHub repo secret PREWARM_TOKEN
+        sync: false
       - key: ALLOWED_ORIGINS # the web app's URL, e.g. https://crous-menu.pages.dev
         sync: false
