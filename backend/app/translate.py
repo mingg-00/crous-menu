@@ -66,6 +66,8 @@ def system_prompt(lang: str) -> str:
         "(merlu = hake, carottes râpées = grated carrots).\n"
         "- Labels stay labels: keep them short and keep trailing punctuation such as ':'. "
         "\"Alternative sans viande\" = meat-free alternative, \"Fait maison\" = homemade, \"Bio\" = organic.\n"
+        "- A line that is only \"Ferme\", \"Fermé\" or \"Fermée\" (accents are often dropped) means the stand is "
+        "closed, never \"farm\".\n"
         "- Don't add or drop information; keep brand and place names.\n"
         f"- {STYLE.get(lang, DEFAULT_STYLE)}\n"
         "Reply with a JSON object mapping the same ids to the translations."
