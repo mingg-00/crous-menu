@@ -67,6 +67,7 @@ export default function Login() {
       <Image source={require('../../assets/brand/mark.png')} style={styles.mark} accessibilityIgnoresInvertColors />
       <Text style={styles.heading}>{t.loginToReview}</Text>
       <Pressable style={styles.button} onPress={onPress} disabled={busy} accessibilityRole="button">
+        <Image source={require('../../assets/brand/google-g.png')} style={styles.googleG} accessibilityIgnoresInvertColors />
         <Text style={styles.buttonText}>{t.continueWithGoogle}</Text>
       </Pressable>
       {error && <Text style={styles.error}>{error}</Text>}
@@ -84,13 +85,16 @@ const styles = StyleSheet.create({
   // Google's sign-in button stays neutral per its branding guidelines.
   button: {
     minHeight: 48,
+    flexDirection: 'row',
     justifyContent: 'center',
+    gap: space.md,
     borderWidth: 1,
     borderColor: '#747775',
     borderRadius: 24,
     alignItems: 'center',
     backgroundColor: '#fff',
   },
+  googleG: { width: 20, height: 20 },
   buttonText: { fontSize: 16, fontWeight: '500', color: '#1f1f1f' },
   error: { ...font.body, color: color.danger },
   privacy: { ...font.caption, color: color.ink3, textAlign: 'center', textDecorationLine: 'underline' },
