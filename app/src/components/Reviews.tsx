@@ -12,7 +12,7 @@ import {
   type Reviews as ReviewsData,
 } from '../lib/api';
 import { lang, t } from '../lib/i18n';
-import { ratingLabel, ratingText } from '../lib/rating';
+import { RatingText } from './RatingText';
 import { supabase } from '../lib/supabase';
 import { color, font, radius, shadow, space } from '../lib/theme';
 
@@ -73,7 +73,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
       setRating(own?.rating ?? 0);
       setComment(own?.comment ?? '');
     } catch {
-      setError(t.loadError);
+      setError(t.loadFailed);
     }
   }, [code]);
 
@@ -127,9 +127,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
         {data === null ? (
           !error && <ActivityIndicator color={color.brand} />
         ) : data.average != null ? (
-          <Text style={styles.summary} accessibilityLabel={ratingLabel({ average: data.average, count: data.count })}>
-            {ratingText({ average: data.average, count: data.count })}
-          </Text>
+          <RatingText rating={{ average: data.average, count: data.count }} style={styles.summary} />
         ) : (
           <Text style={styles.empty}>{t.noReviews}</Text>
         )}

@@ -16,5 +16,5 @@ function demoRating(code: number): Rating {
 }
 
 export function withDemoRatings(summary: TodaySummary, codes: number[]): TodaySummary {
-  return Object.fromEntries(codes.map((c) => [String(c), { preview: summary[c]?.preview ?? null, rating: demoRating(c) }]));
+  return Object.fromEntries(codes.map((c) => [String(c), { preview: summary[c]?.preview ?? null, rating: demoRating(c), translating: false }]));
 }

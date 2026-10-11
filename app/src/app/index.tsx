@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AccountActions } from '../components/AccountActions';
+import { RatingText } from '../components/RatingText';
 import { RestaurantMap } from '../components/RestaurantMap';
+import { LoadError, Loading } from '../components/Status';
 import { fetchNearby, fetchTodaySummary, type Restaurant, type TodaySummary } from '../lib/api';
 import { isDemo, withDemoRatings } from '../lib/demo';
 import { lang, t } from '../lib/i18n';
-import { ratingLabel, ratingText } from '../lib/rating';
 import { color, font, MAX_WIDTH, radius, shadow, space } from '../lib/theme';
 
 function formatDistance(km: number) {
@@ -66,7 +67,7 @@ const locate = Platform.OS === 'web' ? locateWeb : locateNative;
 
 export default function Nearby() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
   const [canRetry, setCanRetry] = useState(false);
@@ -92,7 +93,7 @@ export default function Nearby() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setError(false);
     setCanRetry(false);
     setDetail(null);
     try {
@@ -113,7 +114,7 @@ export default function Nearby() {
       setCanRetry('failure' in final);
       setDetail('failure' in final && final.failure === 'unavailable' ? (final.detail ?? null) : null);
     } catch {
-      setError(t.loadError);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -134,9 +135,19 @@ export default function Nearby() {
     if (!restaurants.length) return;
     let cancelled = false;
     const codes = restaurants.map((r) => r.code);
-    fetchTodaySummary(codes, lang).then((s) => !cancelled && setSummary(isDemo ? withDemoRatings(s, codes) : s), () => {});
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const fetchSummary = () =>
+      fetchTodaySummary(codes, lang).then((s) => {
+        if (cancelled) return;
+        setSummary(isDemo ? withDemoRatings(s, codes) : s);
+        // A preview still in French: its translation lands within ~10s, so ask again a few times.
+        if (Object.values(s).some((r) => r.translating) && ++attempts < 6) timer = setTimeout(fetchSummary, 4000);
+      }, () => {});
+    fetchSummary();
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [restaurants]);
 
@@ -153,23 +164,23 @@ export default function Nearby() {
             {t.nearby}
           </Text>
           {isDemo && <Text style={styles.demo}>{t.demoBanner}</Text>}
-          {Platform.OS === 'web' && restaurants.length > 0 && (
-            <RestaurantMap center={center} showUser={showUser} restaurants={restaurants} summary={summary} onSelect={openRestaurant} />
-          )}
           {note && (
             <View style={styles.note}>
               <Text style={styles.noteText}>{note}</Text>
               {detail && <Text style={styles.detail}>{detail}</Text>}
               {canRetry && (
-                <Pressable onPress={load} accessibilityRole="button" hitSlop={8} style={styles.retry}>
+                <Pressable onPress={load} accessibilityRole="button" style={styles.retry}>
                   <Text style={styles.retryText}>{t.retry}</Text>
                 </Pressable>
               )}
             </View>
           )}
+          {Platform.OS === 'web' && restaurants.length > 0 && (
+            <RestaurantMap center={center} showUser={showUser} restaurants={restaurants} summary={summary} onSelect={openRestaurant} />
+          )}
         </View>
       }
-      ListEmptyComponent={error ? <Text style={styles.message}>{error}</Text> : null}
+      ListEmptyComponent={error ? <LoadError onRetry={load} /> : loading ? <Loading /> : null}
       ListFooterComponent={
         <View style={styles.footer}>
           <AccountActions />
@@ -187,12 +198,9 @@ export default function Nearby() {
               <Text style={styles.name}>{item.nom}</Text>
               <View style={styles.meta}>
                 <Text style={styles.distance}>{formatDistance(item.distance_km)}</Text>
-                {item.type && <Text style={styles.type}>{item.type}</Text>}
-                {summary[item.code]?.rating && (
-                  <Text style={styles.rating} accessibilityLabel={ratingLabel(summary[item.code].rating!)}>
-                    {ratingText(summary[item.code].rating!)}
-                  </Text>
-                )}
+                {/* Nearly every place is a "Restaurant"; only the exceptions (Cafétéria, ...) say something. */}
+                {item.type && item.type !== 'Restaurant' && <Text style={styles.type}>{item.type}</Text>}
+                {summary[item.code]?.rating && <RatingText rating={summary[item.code].rating!} style={styles.rating} />}
               </View>
               {summary[item.code]?.preview && (
                 <Text style={styles.preview} numberOfLines={1}>
@@ -216,14 +224,9 @@ const styles = StyleSheet.create({
   note: { padding: space.md, gap: space.sm, backgroundColor: color.brandTint, borderRadius: radius.md },
   noteText: { ...font.body, fontSize: 15, color: color.ink2 },
   detail: { ...font.caption, color: color.ink3 },
-  retry: {
-    alignSelf: 'flex-start',
-    paddingVertical: space.sm,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.pill,
-    backgroundColor: color.brand,
-  },
-  retryText: { ...font.bodyStrong, fontSize: 15, color: '#fff' },
+  // Secondary: the list below is the point of the page, so this stays a quiet text button.
+  retry: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  retryText: { ...font.bodyStrong, fontSize: 15, color: color.brandPressed, textDecorationLine: 'underline' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -249,7 +252,6 @@ const styles = StyleSheet.create({
   rating: { ...font.caption, fontWeight: '700', color: color.ink2 },
   preview: { ...font.body, fontSize: 15, color: color.ink2 },
   chevron: { fontSize: 28, color: color.ink3, marginLeft: space.sm },
-  message: { ...font.body, padding: space.xl, textAlign: 'center', color: color.ink2 },
   footer: { padding: space.lg, gap: space.sm, alignItems: 'center' },
   unofficial: { ...font.caption, color: color.ink3, textAlign: 'center' },
   privacy: { ...font.caption, color: color.ink3, textAlign: 'center', textDecorationLine: 'underline' },

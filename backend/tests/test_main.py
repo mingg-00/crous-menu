@@ -103,3 +103,25 @@ def test_access_log_redacts_coordinates():
     for f in logging.getLogger("uvicorn.access").filters:
         f.filter(record)
     assert record.getMessage() == '1.2.3.4 - "GET /restaurants/nearby?lat=REDACTED&lng=REDACTED&limit=5"'
+
+
+def test_restaurant_detail_translates_hours_and_flags_pending(monkeypatch):
+    place = {"code": 21, "nom": "Resto U L'Amazone", "adresse": "Avenue Prévost à Talence", "latitude": 44.8,
+             "longitude": -0.6, "horaires": ["Ouvert de 11h45 à 13h45", " "], "acces": ["Tram B - Arts, Métier"],
+             "paiement": ["IZLY"], "telephone": "05.57.59.18.20"}
+
+    async def upstream(path, ttl):
+        return place if path == "/restaurants/21" else None
+
+    async def translate(texts, lang):
+        assert texts == ["Ouvert de 11h45 à 13h45"]  # blank lines dropped
+        return {}, True  # not cached yet
+
+    monkeypatch.setattr(main, "upstream", upstream)
+    monkeypatch.setattr(main, "translate_texts", translate)
+    client = TestClient(main.app)
+    body = client.get("/restaurants/21", params={"lang": "en"}).json()
+    assert body["horaires"] == ["Ouvert de 11h45 à 13h45"] and body["translating"] is True
+    assert body["acces"] == ["Tram B - Arts, Métier"] and body["paiement"] == ["IZLY"]
+    assert client.get("/restaurants/99").status_code == 404
+    assert client.get("/restaurants/nearby", params={"lat": 44.8, "lng": -0.6}).status_code != 422  # route not shadowed

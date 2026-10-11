@@ -94,6 +94,6 @@ def test_today_summary_merges_previews_and_star_ratings(client, monkeypatch):
                      (CAROL,))
     monkeypatch.setattr(main, "upstream", upstream)
     body = client.get("/restaurants/today", params={"codes": "21,26,21", "lang": "en"}).json()
-    assert body == {"21": {"preview": "Hake, basil sauce", "rating": {"average": 4.0, "count": 3}},
-                    "26": {"preview": None, "rating": None}}  # closed today, no reviews; duplicates collapsed
+    assert body == {"21": {"preview": "Hake, basil sauce", "rating": {"average": 4.0, "count": 3}, "translating": False},
+                    "26": {"preview": None, "rating": None, "translating": False}}  # closed today; duplicates collapsed
     assert client.get("/restaurants/today", params={"codes": "21,x"}).status_code == 422

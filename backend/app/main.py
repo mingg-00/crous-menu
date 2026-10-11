@@ -335,8 +335,36 @@ async def today_summary(
     day = today()
     menus = await asyncio.gather(*(upstream(menu_path(c, day), ttl=3600) for c in wanted))
     previews = {c: main_dish(m) for c, m in zip(wanted, menus)}
+    pending: set[int] = set()
     if lang != "fr":
         tr, _ = await translate_texts([p for p in previews.values() if p], lang)
+        pending = {c for c, p in previews.items() if p and p not in tr}
         previews = {c: tr.get(p, p) if p else None for c, p in previews.items()}
     ratings = await db.rating_summary(wanted, "midi")
-    return {str(c): {"preview": previews[c], "rating": ratings.get(c)} for c in wanted}
+    # translating: this preview is still French; its translation lands within ~10s, so the app re-fetches.
+    return {str(c): {"preview": previews[c], "rating": ratings.get(c), "translating": c in pending} for c in wanted}
+
+
+@app.get("/restaurants/{code}")
+async def restaurant(code: int, lang: Lang = "fr"):
+    """What a newcomer needs to get there and pay: address, opening hours (translated), transit, payment, phone."""
+    r = await upstream(f"/restaurants/{code}", ttl=6 * 3600)
+    if not r:
+        raise HTTPException(404, "No such restaurant")
+    hours = [h for h in r.get("horaires") or [] if h.strip()]
+    translating = False
+    if lang != "fr" and hours:
+        tr, translating = await translate_texts(hours, lang)
+        hours = [tr.get(h, h) for h in hours]
+    return {
+        "code": r["code"],
+        "nom": r["nom"],
+        "adresse": r.get("adresse"),
+        "latitude": r.get("latitude"),
+        "longitude": r.get("longitude"),
+        "horaires": hours,
+        "acces": r.get("acces") or [],
+        "paiement": r.get("paiement") or [],
+        "telephone": r.get("telephone"),
+        "translating": translating,
+    }

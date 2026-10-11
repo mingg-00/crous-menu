@@ -3,9 +3,13 @@
   // deploy `npx wrangler deploy`, root directory `app`). The name must equal the Worker name in the dashboard.
   "name": "crous-menu",
   "compatibility_date": "2026-10-10",
+  "main": "worker.js", // only for the keep-awake cron below; pages are served from assets
   "assets": {
     "directory": "./dist/",
+    "binding": "ASSETS",
     // Deep links like /restaurant/21 have no file of their own: serve index.html and let Expo Router route.
     "not_found_handling": "single-page-application"
-  }
+  },
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "vars": { "KEEP_AWAKE_URL": "https://crous-menu-api.onrender.com/health" }
 }

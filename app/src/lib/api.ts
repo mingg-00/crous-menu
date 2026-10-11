@@ -56,6 +56,24 @@ export async function fetchNearby(lat: number, lng: number) {
   return (await get<Restaurant[]>(`/restaurants/nearby?lat=${lat}&lng=${lng}`)) ?? [];
 }
 
+/** Getting there and paying: address, translated opening hours, transit, payment methods, phone. */
+export type RestaurantInfo = {
+  code: number;
+  nom: string;
+  adresse: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  horaires: string[];
+  acces: string[];
+  paiement: string[];
+  telephone: string | null;
+  translating: boolean; // opening hours still French; the server is translating them in the background
+};
+
+export function fetchRestaurant(code: number, lang: string) {
+  return get<RestaurantInfo>(`/restaurants/${code}?lang=${lang}`);
+}
+
 export function fetchTodayMenu(code: number, lang: string) {
   return get<Menu>(`/restaurants/${code}/menu?lang=${lang}`);
 }
@@ -100,7 +118,7 @@ export function deleteAccount() {
 /** Lunch star rating over all days; null until someone reviews. */
 export type Rating = { average: number; count: number } | null;
 
-export type TodaySummary = Record<string, { preview: string | null; rating: Rating }>;
+export type TodaySummary = Record<string, { preview: string | null; rating: Rating; translating: boolean }>;
 
 export async function fetchTodaySummary(codes: number[], lang: string) {
   return (await get<TodaySummary>(`/restaurants/today?codes=${codes.join(',')}&lang=${lang}`)) ?? {};

@@ -2,7 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import * as maplibregl from 'maplibre-gl';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import type { Rating } from '../lib/api';
 import { t } from '../lib/i18n';
@@ -16,6 +16,8 @@ maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
 
 // Free vector tiles, no API key (openfreemap.org); attribution is added by the style.
 const STYLE = 'https://tiles.openfreemap.org/styles/positron';
+const NEAREST_IN_VIEW = 5;
+const LABELED_ON_PHONES = 3;
 
 const CSS = `
 /* Reset the button look piece by piece, never with "all: unset": that also removes MapLibre's
@@ -26,7 +28,9 @@ const CSS = `
 .ru-rating { font: 700 12px/1 system-ui, sans-serif; color: ${color.ink}; background: #fff; border-radius: 999px; padding: 3px 7px; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .ru-rating::first-letter { color: ${color.star}; }
 .ru-pin { width: 14px; height: 14px; border-radius: 50%; background: ${color.brand}; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-.ru-label { font: 600 12px/1.2 system-ui, sans-serif; color: ${color.ink}; background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 6px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ru-label { font: 600 12px/1.2 system-ui, sans-serif; color: ${color.ink}; background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 6px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Phones: only the nearest places keep their name on the map, the rest overlap; the list below names them all. */
+@media (max-width: 599px) { .ru-label-minor { display: none; } }
 .ru-you { width: 14px; height: 14px; border-radius: 50%; background: #1C6DD0; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(28,109,208,.2); }
 `;
 
@@ -39,7 +43,7 @@ function ensureCss() {
 }
 
 /** Pin with the restaurant's name, and its star rating above it once someone has reviewed. */
-function markerElement(name: string, rating: Rating) {
+function markerElement(name: string, rating: Rating, minorLabel: boolean) {
   const el = document.createElement('button');
   el.className = 'ru-marker';
   el.type = 'button';
@@ -54,7 +58,7 @@ function markerElement(name: string, rating: Rating) {
   const pin = document.createElement('span');
   pin.className = 'ru-pin';
   const label = document.createElement('span');
-  label.className = 'ru-label';
+  label.className = minorLabel ? 'ru-label ru-label-minor' : 'ru-label';
   label.textContent = name; // textContent, never innerHTML: names come from an external API
   el.append(pin, label);
   return el;
@@ -77,6 +81,10 @@ export function RestaurantMap({ center, showUser, restaurants, summary, onSelect
       attributionControl: { compact: true },
     });
     map.current.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    // The compact credits start expanded and cover the pins on small maps: start folded into the (i) button.
+    map.current.once('load', () =>
+      map.current?.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'),
+    );
     return () => map.current?.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- create once; center changes are eased below
 
@@ -93,17 +101,28 @@ export function RestaurantMap({ center, showUser, restaurants, summary, onSelect
   }, [center.latitude, center.longitude, showUser]);
 
   useEffect(() => {
+    // Fit the view to the nearest few places and the center, so a first visit shows them without dragging.
+    if (restaurants.length && map.current) {
+      const bounds = new maplibregl.LngLatBounds([center.longitude, center.latitude], [center.longitude, center.latitude]);
+      restaurants.slice(0, NEAREST_IN_VIEW).forEach((r) => bounds.extend([r.longitude, r.latitude]));
+      map.current.fitBounds(bounds, { padding: { top: 60, bottom: 40, left: 40, right: 40 }, maxZoom: 15, duration: 0 });
+    }
+  }, [restaurants, center.latitude, center.longitude]);
+
+  useEffect(() => {
     markers.current.forEach((m) => m.remove());
-    markers.current = restaurants.map((r) => {
-      const el = markerElement(r.nom, summary[r.code]?.rating ?? null);
+    markers.current = restaurants.map((r, i) => {
+      const el = markerElement(r.nom, summary[r.code]?.rating ?? null, i >= LABELED_ON_PHONES);
       el.addEventListener('click', () => onSelect(r));
       return new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([r.longitude, r.latitude]).addTo(map.current!);
     });
   }, [restaurants, summary, onSelect]);
 
-  return <View ref={container} style={styles.map} role="region" aria-label={t.mapLabel} />;
+  // Phones: a shorter map so the list starts within the first screen.
+  const { width } = useWindowDimensions();
+  return <View ref={container} style={[styles.map, { height: width < 600 ? 220 : 320 }]} role="region" aria-label={t.mapLabel} />;
 }
 
 const styles = StyleSheet.create({
-  map: { height: 320, borderRadius: radius.md, overflow: 'hidden', backgroundColor: color.line, ...shadow },
+  map: { borderRadius: radius.md, overflow: 'hidden', backgroundColor: color.line, ...shadow },
 });
