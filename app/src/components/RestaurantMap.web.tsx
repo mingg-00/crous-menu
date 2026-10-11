@@ -4,9 +4,9 @@ import * as maplibregl from 'maplibre-gl';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { ReactionCounts } from '../lib/api';
+import type { Rating } from '../lib/api';
 import { t } from '../lib/i18n';
-import { REACTIONS } from '../lib/reactions';
+import { ratingLabel, ratingText } from '../lib/rating';
 import { color, radius, shadow } from '../lib/theme';
 import type { RestaurantMapProps } from './RestaurantMap';
 
@@ -17,21 +17,17 @@ maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
 // Free vector tiles, no API key (openfreemap.org); attribution is added by the style.
 const STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
-// Floating emojis are CSS so they cost nothing per frame; they stop for users who ask for reduced motion (WCAG 2.3.3).
 const CSS = `
 /* Reset the button look piece by piece, never with "all: unset": that also removes MapLibre's
    .maplibregl-marker { position: absolute }, and the pins then stack in normal flow, each pushed down by the
    heights of the pins before it instead of sitting on its coordinates. */
 .ru-marker { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .ru-marker:focus-visible { outline: 3px solid ${color.ink}; outline-offset: 2px; border-radius: 8px; }
-.ru-bubbles { display: flex; gap: 2px; height: 30px; align-items: flex-end; }
-.ru-bubble { font-size: 20px; line-height: 1; animation: ru-float 2.6s ease-in-out infinite; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
-.ru-bubble b { font: 700 11px/1 system-ui, sans-serif; color: ${color.ink}; background: #fff; border-radius: 999px; padding: 1px 4px; margin-left: -4px; }
+.ru-rating { font: 700 12px/1 system-ui, sans-serif; color: ${color.ink}; background: #fff; border-radius: 999px; padding: 3px 7px; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.ru-rating::first-letter { color: ${color.star}; }
 .ru-pin { width: 14px; height: 14px; border-radius: 50%; background: ${color.brand}; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .ru-label { font: 600 12px/1.2 system-ui, sans-serif; color: ${color.ink}; background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 6px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ru-you { width: 14px; height: 14px; border-radius: 50%; background: #1C6DD0; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(28,109,208,.2); }
-@keyframes ru-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@media (prefers-reduced-motion: reduce) { .ru-bubble { animation: none; } }
 `;
 
 function ensureCss() {
@@ -42,32 +38,25 @@ function ensureCss() {
   document.head.appendChild(style);
 }
 
-/** Top three reactions (most frequent first) as floating emojis above the pin, each with its count. */
-function markerElement(name: string, counts: ReactionCounts | undefined) {
-  const top = REACTIONS.filter(({ kind }) => counts?.[kind])
-    .sort((a, b) => (counts![b.kind] ?? 0) - (counts![a.kind] ?? 0))
-    .slice(0, 3);
+/** Pin with the restaurant's name, and its star rating above it once someone has reviewed. */
+function markerElement(name: string, rating: Rating) {
   const el = document.createElement('button');
   el.className = 'ru-marker';
   el.type = 'button';
-  el.setAttribute('aria-label', [name, ...top.map(({ kind }) => `${t.reactionLabels[kind]} ${counts![kind]}`)].join(', '));
-  const bubbles = document.createElement('span');
-  bubbles.className = 'ru-bubbles';
-  bubbles.setAttribute('aria-hidden', 'true');
-  top.forEach(({ kind, emoji }, i) => {
-    const b = document.createElement('span');
-    b.className = 'ru-bubble';
-    b.style.animationDelay = `${i * 0.45}s`;
-    b.innerHTML = `${emoji}<b></b>`;
-    b.querySelector('b')!.textContent = String(counts![kind]);
-    bubbles.appendChild(b);
-  });
+  el.setAttribute('aria-label', rating ? `${name}, ${ratingLabel(rating)}` : name);
+  if (rating) {
+    const badge = document.createElement('span');
+    badge.className = 'ru-rating';
+    badge.setAttribute('aria-hidden', 'true');
+    badge.textContent = ratingText(rating);
+    el.append(badge);
+  }
   const pin = document.createElement('span');
   pin.className = 'ru-pin';
   const label = document.createElement('span');
   label.className = 'ru-label';
   label.textContent = name; // textContent, never innerHTML: names come from an external API
-  el.append(bubbles, pin, label);
+  el.append(pin, label);
   return el;
 }
 
@@ -106,7 +95,7 @@ export function RestaurantMap({ center, showUser, restaurants, summary, onSelect
   useEffect(() => {
     markers.current.forEach((m) => m.remove());
     markers.current = restaurants.map((r) => {
-      const el = markerElement(r.nom, summary[r.code]?.counts);
+      const el = markerElement(r.nom, summary[r.code]?.rating ?? null);
       el.addEventListener('click', () => onSelect(r));
       return new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([r.longitude, r.latitude]).addTo(map.current!);
     });

@@ -69,13 +69,16 @@ async def block_user(blocker: str, blocked: str):
 
 async def upsert_review(restaurant: int, day, meal: str, user: str, rating: int, comment: str):
     async with pool.connection() as conn:
-        await conn.execute(
+        cur = await conn.execute(
             """INSERT INTO review (restaurant, day, meal, user_id, rating, comment)
                VALUES (%s, %s, %s, %s, %s, %s)
                ON CONFLICT (restaurant, day, meal, user_id)
-               DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, created_at = now()""",
+               DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, created_at = now()
+               RETURNING id""",
             (restaurant, day, meal, user, rating, comment),
         )
+        # The comment may have changed: its old translations are stale.
+        await conn.execute("DELETE FROM review_translation WHERE review_id = %s", ((await cur.fetchone())[0],))
 
 
 async def delete_review(restaurant: int, day, meal: str, user: str) -> bool:
@@ -104,41 +107,35 @@ async def delete_user_data(user: str):
         await conn.execute("DELETE FROM block WHERE blocker = %s OR blocked = %s", (user, user))
 
 
-async def reaction_counts(restaurants: list[int], day, meal: str) -> dict[int, dict[str, int]]:
+async def get_review_translations(ids: list[int], lang: str) -> dict[int, str]:
     async with pool.connection() as conn:
         cur = await conn.execute(
-            """SELECT restaurant, kind, count(*) FROM reaction
-               WHERE restaurant = ANY(%s) AND day = %s AND meal = %s GROUP BY restaurant, kind""",
-            (restaurants, day, meal),
+            "SELECT review_id, dst FROM review_translation WHERE lang = %s AND review_id = ANY(%s)", (lang, ids)
         )
-        counts: dict[int, dict[str, int]] = {}
-        for restaurant, kind, n in await cur.fetchall():
-            counts.setdefault(restaurant, {})[kind] = n
-        return counts
+        return dict(await cur.fetchall())
 
 
-async def my_reaction(restaurant: int, day, meal: str, voter: str) -> str | None:
+async def save_review_translations(rows: list[tuple[int, str, str]], lang: str):
+    """rows: (review_id, source comment, translation). A row is kept only if the review still exists with that same
+    comment, so an edit or delete during the ~10s LLM call never leaves a stale or orphaned translation."""
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.executemany(
+                """INSERT INTO review_translation (review_id, lang, dst)
+                   SELECT id, %s, %s FROM review WHERE id = %s AND comment = %s
+                   ON CONFLICT DO NOTHING""",
+                [(lang, dst, review_id, src) for review_id, src, dst in rows],
+            )
+
+
+async def rating_summary(restaurants: list[int], meal: str) -> dict[int, dict]:
+    """Average stars and review count per restaurant over all days, leaving out reviews hidden by reports."""
     async with pool.connection() as conn:
         cur = await conn.execute(
-            "SELECT kind FROM reaction WHERE restaurant = %s AND day = %s AND meal = %s AND voter = %s",
-            (restaurant, day, meal, voter),
+            """SELECT restaurant, round(avg(rating), 1)::float, count(*) FROM review r
+               WHERE restaurant = ANY(%s) AND meal = %s
+                 AND (SELECT count(*) FROM report p WHERE p.review_id = r.id) < %s
+               GROUP BY restaurant""",
+            (restaurants, meal, HIDE_AFTER_REPORTS),
         )
-        row = await cur.fetchone()
-        return row[0] if row else None
-
-
-async def set_reaction(restaurant: int, day, meal: str, voter: str, kind: str):
-    async with pool.connection() as conn:
-        await conn.execute(
-            """INSERT INTO reaction (restaurant, day, meal, voter, kind) VALUES (%s, %s, %s, %s, %s)
-               ON CONFLICT (restaurant, day, meal, voter) DO UPDATE SET kind = EXCLUDED.kind, created_at = now()""",
-            (restaurant, day, meal, voter, kind),
-        )
-
-
-async def delete_reaction(restaurant: int, day, meal: str, voter: str):
-    async with pool.connection() as conn:
-        await conn.execute(
-            "DELETE FROM reaction WHERE restaurant = %s AND day = %s AND meal = %s AND voter = %s",
-            (restaurant, day, meal, voter),
-        )
+        return {restaurant: {"average": average, "count": n} for restaurant, average, n in await cur.fetchall()}

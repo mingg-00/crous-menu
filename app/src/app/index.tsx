@@ -3,21 +3,13 @@ import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AccountActions } from '../components/AccountActions';
 import { RestaurantMap } from '../components/RestaurantMap';
 import { fetchNearby, fetchTodaySummary, type Restaurant, type TodaySummary } from '../lib/api';
-import { isDemo, withDemoCounts } from '../lib/demo';
+import { isDemo, withDemoRatings } from '../lib/demo';
 import { lang, t } from '../lib/i18n';
-import { REACTIONS } from '../lib/reactions';
+import { ratingLabel, ratingText } from '../lib/rating';
 import { color, font, MAX_WIDTH, radius, shadow, space } from '../lib/theme';
-
-/** "😋 12  🙂 3", most frequent first; empty when nobody reacted yet. */
-function reactionLine(counts: TodaySummary[string]['counts'] | undefined) {
-  if (!counts) return '';
-  return REACTIONS.filter(({ kind }) => counts[kind])
-    .sort((a, b) => (counts[b.kind] ?? 0) - (counts[a.kind] ?? 0))
-    .map(({ kind, emoji }) => `${emoji} ${counts[kind]}`)
-    .join('  ');
-}
 
 function formatDistance(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
@@ -136,13 +128,13 @@ export default function Nearby() {
     [],
   );
 
-  // Today's lunch preview and reactions per card, fetched after the list shows so it never waits on them.
+  // Today's lunch preview and the lunch rating per card, fetched after the list shows so it never waits on them.
   const [summary, setSummary] = useState<TodaySummary>({});
   useEffect(() => {
     if (!restaurants.length) return;
     let cancelled = false;
     const codes = restaurants.map((r) => r.code);
-    fetchTodaySummary(codes, lang).then((s) => !cancelled && setSummary(isDemo ? withDemoCounts(s, codes) : s), () => {});
+    fetchTodaySummary(codes, lang).then((s) => !cancelled && setSummary(isDemo ? withDemoRatings(s, codes) : s), () => {});
     return () => {
       cancelled = true;
     };
@@ -180,6 +172,7 @@ export default function Nearby() {
       ListEmptyComponent={error ? <Text style={styles.message}>{error}</Text> : null}
       ListFooterComponent={
         <View style={styles.footer}>
+          <AccountActions />
           <Text style={styles.unofficial}>{t.unofficial}</Text>
           <Link href="/privacy" style={styles.privacy}>
             {t.privacy}
@@ -195,8 +188,10 @@ export default function Nearby() {
               <View style={styles.meta}>
                 <Text style={styles.distance}>{formatDistance(item.distance_km)}</Text>
                 {item.type && <Text style={styles.type}>{item.type}</Text>}
-                {!!reactionLine(summary[item.code]?.counts) && (
-                  <Text style={styles.reactions}>{reactionLine(summary[item.code]?.counts)}</Text>
+                {summary[item.code]?.rating && (
+                  <Text style={styles.rating} accessibilityLabel={ratingLabel(summary[item.code].rating!)}>
+                    {ratingText(summary[item.code].rating!)}
+                  </Text>
                 )}
               </View>
               {summary[item.code]?.preview && (
@@ -251,7 +246,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   type: { ...font.caption, color: color.ink3 },
-  reactions: { ...font.caption, color: color.ink2 },
+  rating: { ...font.caption, fontWeight: '700', color: color.ink2 },
   preview: { ...font.body, fontSize: 15, color: color.ink2 },
   chevron: { fontSize: 28, color: color.ink3, marginLeft: space.sm },
   message: { ...font.body, padding: space.xl, textAlign: 'center', color: color.ink2 },

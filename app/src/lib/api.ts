@@ -1,5 +1,3 @@
-import { clientId } from './clientId';
-import type { ReactionKind } from './reactions';
 import { supabase } from './supabase';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8100';
@@ -29,7 +27,16 @@ export type Reviews = {
   count: number;
   average: number | null;
   today: string; // server's date (Paris); only a review of this day can be edited or deleted
-  reviews: { id: number; rating: number; comment: string; day: string; created_at: string; mine: boolean }[];
+  reviews: {
+    id: number;
+    rating: number;
+    comment: string;
+    translation?: string | null; // comment in the viewer's language; null when there is nothing to translate
+    day: string;
+    created_at: string;
+    mine: boolean;
+  }[];
+  translating: boolean; // some comments not translated yet; the server is translating them in the background
 };
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -38,8 +45,8 @@ async function authHeader(): Promise<Record<string, string>> {
 }
 
 /** Returns null on 404 (e.g. no menu that day), throws on other errors. */
-async function get<T>(path: string, headers: Record<string, string> = {}): Promise<T | null> {
-  const res = await fetch(API_URL + path, { headers: { ...(await authHeader()), ...headers } });
+async function get<T>(path: string): Promise<T | null> {
+  const res = await fetch(API_URL + path, { headers: await authHeader() });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
@@ -53,15 +60,15 @@ export function fetchTodayMenu(code: number, lang: string) {
   return get<Menu>(`/restaurants/${code}/menu?lang=${lang}`);
 }
 
-export async function fetchReviews(code: number) {
-  return (await get<Reviews>(`/restaurants/${code}/reviews`))!;
+export async function fetchReviews(code: number, lang: string) {
+  return (await get<Reviews>(`/restaurants/${code}/reviews?lang=${lang}`))!;
 }
 
 /** Throws with the server's string `detail` as message when there is one (e.g. "comment_rejected"). */
-async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unknown, headers: Record<string, string> = {}) {
+async function send(method: 'PUT' | 'POST' | 'DELETE', path: string, body?: unknown) {
   const res = await fetch(API_URL + path, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(await authHeader()), ...headers },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) {
@@ -90,21 +97,10 @@ export function deleteAccount() {
   return send('DELETE', '/me');
 }
 
-export type ReactionCounts = Partial<Record<ReactionKind, number>>;
+/** Lunch star rating over all days; null until someone reviews. */
+export type Rating = { average: number; count: number } | null;
 
-const device = () => ({ 'X-Client-Id': clientId() });
-
-export async function fetchReactions(code: number) {
-  return (await get<{ counts: ReactionCounts; mine: ReactionKind | null }>(`/restaurants/${code}/reactions`, device()))!;
-}
-
-/** Set (or with null, remove) this device's reaction to today's lunch. */
-export function setReaction(code: number, kind: ReactionKind | null) {
-  const path = `/restaurants/${code}/reactions/mine`;
-  return kind ? send('PUT', path, { kind }, device()) : send('DELETE', path, undefined, device());
-}
-
-export type TodaySummary = Record<string, { preview: string | null; counts: ReactionCounts }>;
+export type TodaySummary = Record<string, { preview: string | null; rating: Rating }>;
 
 export async function fetchTodaySummary(codes: number[], lang: string) {
   return (await get<TodaySummary>(`/restaurants/today?codes=${codes.join(',')}&lang=${lang}`)) ?? {};

@@ -5,7 +5,7 @@ import os
 
 from openai import AsyncOpenAI
 
-from app.db import get_translations, save_translations
+from app.db import get_review_translations, get_translations, save_review_translations, save_translations
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ LANGUAGES = {
 
 _client: AsyncOpenAI | None = None
 _inflight: set[tuple[str, str]] = set()  # (text, lang) being translated right now
+_inflight_reviews: set[tuple[int, str]] = set()  # (review id, lang)
 _tasks: set[asyncio.Task] = set()  # strong refs so background tasks aren't garbage-collected
 
 
@@ -74,8 +75,27 @@ def system_prompt(lang: str) -> str:
     )
 
 
-async def llm_translate(texts: list[str], lang: str, model: str = MODEL) -> dict[str, str]:
-    """Translate French menu texts in one call. Returns only the entries the model answered validly."""
+# Reviews can be read in French too, and can be written in any language.
+REVIEW_LANGUAGES = {"fr": "French", **LANGUAGES}
+
+
+def review_prompt(lang: str) -> str:
+    return (
+        f"You translate short reviews of a university canteen meal (Crous, France) into {REVIEW_LANGUAGES[lang]} "
+        "for students from other countries.\n"
+        "Input: a JSON object mapping ids to review comments, each written by a student in any language.\n"
+        "Rules:\n"
+        "- Keep the writer's tone and emoji. Write slang and laughter (ㅋㅋ, mdr, jaja) the way a reader of that "
+        "language would (lol, 笑, ...), and dish names as that reader knows them.\n"
+        f"- If a comment is already in {REVIEW_LANGUAGES[lang]}, return it unchanged.\n"
+        "- Don't add, soften or drop anything.\n"
+        "Reply with a JSON object mapping the same ids to the translations."
+    )
+
+
+async def llm_translate(texts: list[str], lang: str, model: str = MODEL, prompt: str | None = None) -> dict[str, str]:
+    """Translate texts in one call (French menu lines unless `prompt` says otherwise). Returns only the entries the
+    model answered validly."""
     global _client
     # Runs in the background (see translate_texts), so no user waits on this timeout.
     _client = _client or AsyncOpenAI(timeout=120, max_retries=1)
@@ -85,7 +105,7 @@ async def llm_translate(texts: list[str], lang: str, model: str = MODEL) -> dict
         **({"reasoning_effort": REASONING_EFFORT} if model.startswith("gpt-5") else {"temperature": 0}),
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": system_prompt(lang)},
+            {"role": "system", "content": prompt or system_prompt(lang)},
             {"role": "user", "content": json.dumps(dict(enumerate(texts)), ensure_ascii=False)},
         ],
     )
@@ -126,6 +146,38 @@ async def translate_texts(texts: list[str], lang: str) -> tuple[dict[str, str], 
     if todo:
         _inflight.update((t, lang) for t in todo)
         task = asyncio.create_task(_translate_and_cache(todo, lang))
+        _tasks.add(task)
+        task.add_done_callback(_tasks.discard)
+    return found, bool(missing)
+
+
+async def _translate_reviews_and_cache(comments: dict[int, str], lang: str):
+    try:
+        new = await llm_translate(list(dict.fromkeys(comments.values())), lang, prompt=review_prompt(lang))
+        rows = [(i, src, new[src]) for i, src in comments.items() if src in new]
+        if rows:
+            await save_review_translations(rows, lang)
+    except Exception:
+        log.exception("background review translation failed; the next request will retry")
+    finally:
+        _inflight_reviews.difference_update((i, lang) for i in comments)
+
+
+async def translate_reviews(comments: dict[int, str], lang: str) -> tuple[dict[int, str], bool]:
+    """Cached translations of review comments (by review id), plus whether some are still pending.
+    Same background pattern as translate_texts."""
+    if not comments:
+        return {}, False
+    try:
+        found = await get_review_translations(list(comments), lang)
+    except Exception:
+        log.exception("review translation cache unavailable, serving originals")
+        return {}, False
+    missing = {i: c for i, c in comments.items() if i not in found}
+    todo = {i: c for i, c in missing.items() if (i, lang) not in _inflight_reviews}
+    if todo:
+        _inflight_reviews.update((i, lang) for i in todo)
+        task = asyncio.create_task(_translate_reviews_and_cache(todo, lang))
         _tasks.add(task)
         task.add_done_callback(_tasks.discard)
     return found, bool(missing)

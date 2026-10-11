@@ -33,7 +33,7 @@ def setup(client, monkeypatch):
 
     monkeypatch.setattr(main, "is_flagged", flagged)
     with psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test", autocommit=True) as conn:
-        conn.execute("TRUNCATE review, report, block")
+        conn.execute("TRUNCATE review, report, block, review_translation")
 
 
 def test_one_review_per_user_per_meal_and_average(client):
