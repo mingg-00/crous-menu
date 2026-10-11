@@ -12,10 +12,11 @@ import {
   saveMyReview,
   type Reviews as ReviewsData,
 } from '../lib/api';
-import { t } from '../lib/i18n';
+import { lang, t } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 import { color, font, radius, shadow, space } from '../lib/theme';
 
+const reviewDate = (day: string) => new Date(`${day}T12:00`).toLocaleDateString(lang, { month: 'short', day: 'numeric' });
 const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 function TextButton({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
@@ -39,7 +40,7 @@ function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: (
   );
 }
 
-/** Today's lunch reviews for one restaurant, plus the form for the logged-in user's own review.
+/** Lunch reviews of every day for one restaurant, plus the form for the logged-in user's own review.
  * `returnTo` is where web login redirects back to (a full-page redirect loses navigation history). */
 export function Reviews({ code, returnTo }: { code: number; returnTo: string }) {
   const [data, setData] = useState<ReviewsData | null>(null);
@@ -51,7 +52,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
   const [actionsFor, setActionsFor] = useState<number | null>(null); // review whose report/block row is open
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
-  const mine = data?.reviews.find((r) => r.mine);
+  const mine = data?.reviews.find((r) => r.mine && r.day === data.today); // older own reviews stay read-only
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -63,7 +64,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
     try {
       const d = await fetchReviews(code);
       setData(d);
-      const own = d.reviews.find((r) => r.mine);
+      const own = d.reviews.find((r) => r.mine && r.day === d.today);
       setRating(own?.rating ?? 0);
       setComment(own?.comment ?? '');
     } catch {
@@ -171,7 +172,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
           <View style={styles.reviewRow}>
             <View style={styles.reviewBody}>
               <Text style={styles.reviewStars} accessibilityLabel={`${r.rating}/5`}>
-                {stars(r.rating)}
+                {stars(r.rating)} <Text style={styles.date}>{reviewDate(r.day)}</Text>
               </Text>
               {!!r.comment && <Text style={styles.comment}>{r.comment}</Text>}
             </View>
@@ -285,4 +286,5 @@ const styles = StyleSheet.create({
   privacyLink: { ...font.caption, color: color.ink3, textDecorationLine: 'underline' },
   more: { fontSize: 20, color: color.ink3, paddingHorizontal: space.sm },
   reviewStars: { color: color.star, letterSpacing: 1 },
+  date: { ...font.caption, color: color.ink3, letterSpacing: 0 },
 });

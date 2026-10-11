@@ -28,7 +28,8 @@ export type Menu = {
 export type Reviews = {
   count: number;
   average: number | null;
-  reviews: { id: number; rating: number; comment: string; created_at: string; mine: boolean }[];
+  today: string; // server's date (Paris); only a review of this day can be edited or deleted
+  reviews: { id: number; rating: number; comment: string; day: string; created_at: string; mine: boolean }[];
 };
 
 async function authHeader(): Promise<Record<string, string>> {

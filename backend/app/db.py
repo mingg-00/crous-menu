@@ -27,18 +27,18 @@ async def get_translations(texts: set[str], lang: str) -> dict[str, str]:
 
 
 async def list_reviews(restaurant: int, day, meal: str, viewer: str | None) -> list[dict]:
-    """Reviews of one meal, minus what the viewer reported or whose author they blocked, and minus reviews
+    """Reviews of one meal (of every day when `day` is None), newest first, minus what the viewer reported or whose author they blocked, and minus reviews
     reported by HIDE_AFTER_REPORTS people (still shown to their author)."""
     async with pool.connection() as conn:
         cur = await conn.execute(
-            """SELECT r.id, r.rating, r.comment, r.created_at, COALESCE(r.user_id = %(viewer)s::uuid, false) AS mine
+            """SELECT r.id, r.rating, r.comment, r.day, r.created_at, COALESCE(r.user_id = %(viewer)s::uuid, false) AS mine
                FROM review r
-               WHERE r.restaurant = %(restaurant)s AND r.day = %(day)s AND r.meal = %(meal)s
+               WHERE r.restaurant = %(restaurant)s AND (%(day)s::date IS NULL OR r.day = %(day)s) AND r.meal = %(meal)s
                  AND (r.user_id = %(viewer)s::uuid
                       OR (SELECT count(*) FROM report p WHERE p.review_id = r.id) < %(hide_after)s)
                  AND NOT EXISTS (SELECT 1 FROM report p WHERE p.review_id = r.id AND p.reporter = %(viewer)s::uuid)
                  AND NOT EXISTS (SELECT 1 FROM block b WHERE b.blocker = %(viewer)s::uuid AND b.blocked = r.user_id)
-               ORDER BY r.created_at DESC LIMIT 200""",  # ponytail: no pagination, one meal rarely gets 200
+               ORDER BY r.created_at DESC LIMIT 200""",  # ponytail: no pagination; with all days, the list and its average cover the latest 200
             {"viewer": viewer, "restaurant": restaurant, "day": day, "meal": meal, "hide_after": HIDE_AFTER_REPORTS},
         )
         cols = [c.name for c in cur.description]

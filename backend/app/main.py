@@ -178,9 +178,10 @@ async def reviews(
     meal: Meal = "midi",
     viewer: str | None = Depends(optional_user),
 ):
-    rows = await db.list_reviews(code, day or today(), meal, viewer)
+    rows = await db.list_reviews(code, day, meal, viewer)  # no date: every day, newest first
     average = round(sum(r["rating"] for r in rows) / len(rows), 1) if rows else None
-    return {"count": len(rows), "average": average, "reviews": rows}
+    # `today` lets the app tell which review is editable: writes only accept today's meal.
+    return {"count": len(rows), "average": average, "today": today().isoformat(), "reviews": rows}
 
 
 async def require_meal_today(code: int, meal: str) -> date:

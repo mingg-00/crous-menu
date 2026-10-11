@@ -51,6 +51,22 @@ def test_one_review_per_user_per_meal_and_average(client):
     assert not any(r["mine"] for r in anon) and all("user_id" not in r for r in anon)
 
 
+def test_past_days_stay_listed_newest_first_but_only_today_is_writable(client):
+    with psycopg.connect("postgresql://crous:crous@localhost:5434/crous_test", autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO review (restaurant, day, meal, user_id, rating, created_at) VALUES "
+            "(21, current_date - 3, 'midi', %s, 1, now() - interval '3 days')",
+            (ALICE,),
+        )
+    client.put("/restaurants/21/reviews/mine", json={"rating": 5}, headers=token(ALICE))
+
+    body = client.get("/restaurants/21/reviews", headers=token(ALICE)).json()
+    assert [r["rating"] for r in body["reviews"]] == [5, 1] and body["average"] == 3.0
+    assert [r["day"] for r in body["reviews"]][0] == body["today"]  # the app edits only the review dated `today`
+    # An explicit date still narrows the list to that day
+    assert client.get("/restaurants/21/reviews", params={"date": body["today"]}).json()["count"] == 1
+
+
 def test_delete_own_review(client):
     client.put("/restaurants/21/reviews/mine", json={"rating": 3}, headers=token(ALICE))
     assert client.delete("/restaurants/21/reviews/mine", headers=token(BOB)).status_code == 404
