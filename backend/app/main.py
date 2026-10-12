@@ -345,13 +345,39 @@ async def today_summary(
     return {str(c): {"preview": previews[c], "rating": ratings.get(c), "translating": c in pending} for c in wanted}
 
 
+_MONTHS = "janvier février mars avril mai juin juillet août septembre octobre novembre décembre".split()
+_TIME = re.compile(r"\b\d{1,2}\s*h\s*\d{0,2}", re.I)
+_DATE = re.compile(r"\b(\d{1,2})(?:er)?\s+(" + "|".join(_MONTHS) + r")\b", re.I)
+
+
+def is_past_notice(line: str, day: date) -> bool:
+    """A one-off announcement whose date has passed ("Ouverture officielle le lundi 26 janvier").
+
+    Upstream leaves these in the opening hours for months and without a year. Notices go up shortly before the
+    date, so a date counts as upcoming only within the next ~3 months; later than that it is last year's
+    (in December, "5 janvier" is next month; in October, "26 janvier" was last January). Undated lines and
+    upcoming notices (a closure next week) are kept, and so are hours that start on a date."""
+    m = _DATE.search(line)
+    if not m or len(_TIME.findall(line)) >= 2:
+        return False  # undated, or hours that apply from that date on ("A partir du 23 mai : 7h30-15h")
+    try:
+        when = date(day.year, _MONTHS.index(m.group(2).lower()) + 1, int(m.group(1)))
+        if (when - day).days > 90:
+            when = when.replace(year=day.year - 1)
+        elif (when - day).days < -270:
+            when = when.replace(year=day.year + 1)
+    except ValueError:
+        return False  # not a real date ("31 février", 29 février in another year): leave the line alone
+    return when < day
+
+
 @app.get("/restaurants/{code}")
 async def restaurant(code: int, lang: Lang = "fr"):
     """What a newcomer needs to get there and pay: address, opening hours (translated), transit, payment, phone."""
     r = await upstream(f"/restaurants/{code}", ttl=6 * 3600)
     if not r:
         raise HTTPException(404, "No such restaurant")
-    hours = [h for h in r.get("horaires") or [] if h.strip()]
+    hours = [h for h in r.get("horaires") or [] if h.strip() and not is_past_notice(h, today())]
     translating = False
     if lang != "fr" and hours:
         tr, translating = await translate_texts(hours, lang)

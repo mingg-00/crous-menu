@@ -53,14 +53,15 @@ function InfoRow({ icon, label, children }: { icon: string; label?: string; chil
   );
 }
 
-/** Address with directions, opening hours, transit, payment and phone: what a newcomer needs to get there. */
+/** Address with its transit stop and directions, opening hours, payment and phone: what a newcomer needs. */
 function InfoCard({ info }: { info: RestaurantInfo }) {
   const hasPlace = info.latitude != null && info.longitude != null;
   return (
     <View style={styles.card}>
-      {(info.adresse || hasPlace) && (
+      {(info.adresse || info.acces.length > 0 || hasPlace) && (
         <InfoRow icon="📍">
           {info.adresse && <Text style={styles.infoText}>{info.adresse}</Text>}
+          {info.acces.length > 0 && <Text style={styles.transit}>🚋 {info.acces.join(' · ')}</Text>}
           {hasPlace && (
             <Pressable
               onPress={() =>
@@ -80,11 +81,6 @@ function InfoCard({ info }: { info: RestaurantInfo }) {
               {h}
             </Text>
           ))}
-        </InfoRow>
-      )}
-      {info.acces.length > 0 && (
-        <InfoRow icon="🚋" label={t.gettingThere}>
-          <Text style={styles.infoText}>{info.acces.join(' · ')}</Text>
         </InfoRow>
       )}
       {info.paiement.length > 0 && (
@@ -194,6 +190,7 @@ const styles = StyleSheet.create({
   infoBody: { flex: 1, gap: 2 },
   infoLabel: { ...font.overline, color: color.ink3 },
   infoText: { ...font.body, color: color.ink },
+  transit: { ...font.body, fontSize: 15, color: color.ink2 },
   linkHit: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   link: { ...font.bodyStrong, color: color.brandPressed, textDecorationLine: 'underline' },
 });

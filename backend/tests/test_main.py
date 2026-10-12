@@ -125,3 +125,18 @@ def test_restaurant_detail_translates_hours_and_flags_pending(monkeypatch):
     assert body["acces"] == ["Tram B - Arts, Métier"] and body["paiement"] == ["IZLY"]
     assert client.get("/restaurants/99").status_code == 404
     assert client.get("/restaurants/nearby", params={"lat": 44.8, "lng": -0.6}).status_code != 422  # route not shadowed
+
+
+def test_past_dated_notices_are_dropped_from_opening_hours():
+    from datetime import date
+
+    oct12 = date(2026, 10, 12)
+    assert main.is_past_notice("Ouverture officielle le lundi 26 janvier", oct12)
+    assert main.is_past_notice("Fermeture exceptionnelle du 29 septembre", oct12)
+    assert not main.is_past_notice("Fermeture exceptionnelle le 20 octobre", oct12)  # upcoming: keep
+    assert not main.is_past_notice("Fermé le 1er novembre", oct12)
+    assert not main.is_past_notice("Fermeture du Crous Forum pour 1 an", oct12)  # undated: keep
+    assert not main.is_past_notice("Ouvert de 11h45 à 13h45 du lundi au vendredi", oct12)
+    assert not main.is_past_notice("A partir du 23 mai : 7h30 -15h", oct12)  # hours in force since then: keep
+    assert not main.is_past_notice("Réouverture le 5 janvier", date(2026, 12, 20))  # next month, not last January
+    assert main.is_past_notice("Fermé le 20 décembre", date(2027, 1, 3))  # last month, not next December
