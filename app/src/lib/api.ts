@@ -99,8 +99,8 @@ export function saveMyReview(code: number, rating: number, comment: string) {
   return send('PUT', `/restaurants/${code}/reviews/mine`, { rating, comment });
 }
 
-export function deleteMyReview(code: number) {
-  return send('DELETE', `/restaurants/${code}/reviews/mine`);
+export function deleteMyReview(id: number) {
+  return send('DELETE', `/reviews/${id}`);
 }
 
 export function reportReview(id: number, reason: 'spam' | 'offensive') {

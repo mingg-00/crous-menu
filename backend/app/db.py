@@ -81,12 +81,10 @@ async def upsert_review(restaurant: int, day, meal: str, user: str, rating: int,
         await conn.execute("DELETE FROM review_translation WHERE review_id = %s", ((await cur.fetchone())[0],))
 
 
-async def delete_review(restaurant: int, day, meal: str, user: str) -> bool:
+async def delete_review(review_id: int, user: str) -> bool:
+    """Delete one of the user's own reviews (any day). False if it doesn't exist or isn't theirs."""
     async with pool.connection() as conn:
-        cur = await conn.execute(
-            "DELETE FROM review WHERE restaurant = %s AND day = %s AND meal = %s AND user_id = %s",
-            (restaurant, day, meal, user),
-        )
+        cur = await conn.execute("DELETE FROM review WHERE id = %s AND user_id = %s", (review_id, user))
         return cur.rowcount > 0
 
 

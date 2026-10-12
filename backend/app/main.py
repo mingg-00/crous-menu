@@ -215,10 +215,11 @@ async def write_review(code: int, body: ReviewIn, meal: Meal = "midi", user: str
     await db.upsert_review(code, day, meal, user, body.rating, comment)
 
 
-@app.delete("/restaurants/{code}/reviews/mine", status_code=204)
-async def remove_review(code: int, meal: Meal = "midi", user: str = Depends(current_user)):
-    if not await db.delete_review(code, today(), meal, user):
-        raise HTTPException(404, "No review to delete")
+@app.delete("/reviews/{review_id}", status_code=204)
+async def remove_review(review_id: int, user: str = Depends(current_user)):
+    """Delete the caller's own review, from any day. Someone else's review answers 404, same as a missing one."""
+    if not await db.delete_review(review_id, user):
+        raise HTTPException(404, "No such review of yours")
 
 
 class ReportIn(BaseModel):

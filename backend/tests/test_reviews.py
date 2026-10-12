@@ -65,12 +65,19 @@ def test_past_days_stay_listed_newest_first_but_only_today_is_writable(client):
     assert [r["day"] for r in body["reviews"]][0] == body["today"]  # the app edits only the review dated `today`
     # An explicit date still narrows the list to that day
     assert client.get("/restaurants/21/reviews", params={"date": body["today"]}).json()["count"] == 1
+    # Own old reviews can be deleted too
+    old = next(r["id"] for r in body["reviews"] if r["day"] != body["today"])
+    assert client.delete(f"/reviews/{old}", headers=token(ALICE)).status_code == 204
+    assert client.get("/restaurants/21/reviews").json()["count"] == 1
 
 
-def test_delete_own_review(client):
+def test_delete_own_review_by_id(client):
     client.put("/restaurants/21/reviews/mine", json={"rating": 3}, headers=token(ALICE))
-    assert client.delete("/restaurants/21/reviews/mine", headers=token(BOB)).status_code == 404
-    assert client.delete("/restaurants/21/reviews/mine", headers=token(ALICE)).status_code == 204
+    rid = review_id(client, ALICE)
+    assert client.delete(f"/reviews/{rid}", headers=token(BOB)).status_code == 404  # not yours
+    assert client.delete(f"/reviews/{rid}").status_code == 401
+    assert client.delete(f"/reviews/{rid}", headers=token(ALICE)).status_code == 204
+    assert client.delete(f"/reviews/{rid}", headers=token(ALICE)).status_code == 404  # already gone
     assert client.get("/restaurants/21/reviews").json()["count"] == 0
 
 

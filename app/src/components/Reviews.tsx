@@ -43,7 +43,7 @@ function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: (
 }
 
 /** Lunch reviews of every day for one restaurant, comments shown in the reader's language, plus the form for the
- * logged-in user's review of today. `returnTo` is where web login redirects back to (a full-page redirect loses
+ * logged-in user's review of today (only until they have posted it: reviews are deleted, not edited). `returnTo` is where web login redirects back to (a full-page redirect loses
  * navigation history). Account actions (log out, delete account) live on the home screen, not here. */
 export function Reviews({ code, returnTo }: { code: number; returnTo: string }) {
   const [data, setData] = useState<ReviewsData | null>(null); // null = loading
@@ -54,10 +54,10 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
   const [notice, setNotice] = useState<string | null>(null);
   const [actionsFor, setActionsFor] = useState<number | null>(null); // review whose report/block row is open
   const [confirmBlock, setConfirmBlock] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState<number | null>(null); // own review whose delete confirmation is open
   const [originals, setOriginals] = useState<Set<number>>(new Set()); // reviews switched back to the original text
   const translationPolls = useRef(0);
-  const mine = data?.reviews.find((r) => r.mine && r.day === data.today); // older own reviews stay read-only
+  const mine = data?.reviews.find((r) => r.mine && r.day === data.today); // one review per meal: no form while it exists
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -69,9 +69,10 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
     try {
       const d = await fetchReviews(code, lang);
       setData(d);
-      const own = d.reviews.find((r) => r.mine && r.day === d.today);
-      setRating(own?.rating ?? 0);
-      setComment(own?.comment ?? '');
+      if (d.reviews.some((r) => r.mine && r.day === d.today)) {
+        setRating(0); // just posted: the form is gone, and starts empty if the review is deleted
+        setComment('');
+      }
     } catch {
       setError(t.loadFailed);
     }
@@ -109,7 +110,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
     try {
       await action();
       toggleActions(null);
-      setConfirmDelete(false);
+      setDeleting(null);
       await load();
       setNotice(doneMessage);
     } catch (e) {
@@ -134,55 +135,44 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
       </View>
 
       {session ? (
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>{t.yourReview}</Text>
-          <View style={styles.starRow} accessibilityRole="radiogroup" accessibilityLabel={t.yourReview}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable
-                key={n}
-                onPress={() => setRating(n)}
-                accessibilityRole="radio"
-                accessibilityLabel={starLabel(n)}
-                accessibilityState={{ checked: n === rating }}
-                style={styles.starHit}>
-                <Text style={styles.star}>{n <= rating ? '★' : '☆'}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View>
-            <TextInput
-              style={styles.input}
-              placeholder={t.commentPlaceholder}
-              placeholderTextColor={color.ink3}
-              accessibilityLabel={t.commentPlaceholder} // stays as the field's name once the placeholder is gone
-              value={comment}
-              onChangeText={setComment}
-              maxLength={MAX_COMMENT}
-              multiline
-            />
-            <Text style={styles.counter} accessibilityLiveRegion="polite">
-              {comment.length}/{MAX_COMMENT}
-            </Text>
-          </View>
-          {confirmDelete ? (
-            <View style={styles.actions}>
-              <Text style={styles.hint}>{t.deleteReviewConfirm}</Text>
-              <View style={styles.actionRow}>
-                <TextButton label={t.delete} danger onPress={() => save(() => deleteMyReview(code), t.reviewDeleted)} />
-                <TextButton label={t.cancel} onPress={() => setConfirmDelete(false)} />
-              </View>
+        !mine && (
+          <View style={styles.form}>
+            <Text style={styles.formTitle}>{t.yourReview}</Text>
+            <View style={styles.starRow} accessibilityRole="radiogroup" accessibilityLabel={t.yourReview}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Pressable
+                  key={n}
+                  onPress={() => setRating(n)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={starLabel(n)}
+                  accessibilityState={{ checked: n === rating }}
+                  style={styles.starHit}>
+                  <Text style={styles.star}>{n <= rating ? '★' : '☆'}</Text>
+                </Pressable>
+              ))}
             </View>
-          ) : (
-            <View style={styles.formActions}>
-              <PrimaryButton
-                label={mine ? t.update : t.submit}
-                disabled={!rating}
-                onPress={() => save(() => saveMyReview(code, rating, comment), t.reviewSaved)}
+            <View>
+              <TextInput
+                style={styles.input}
+                placeholder={t.commentPlaceholder}
+                placeholderTextColor={color.ink3}
+                accessibilityLabel={t.commentPlaceholder} // stays as the field's name once the placeholder is gone
+                value={comment}
+                onChangeText={setComment}
+                maxLength={MAX_COMMENT}
+                multiline
               />
-              {mine && <TextButton label={t.delete} danger onPress={() => setConfirmDelete(true)} />}
+              <Text style={styles.counter} accessibilityLiveRegion="polite">
+                {comment.length}/{MAX_COMMENT}
+              </Text>
             </View>
-          )}
-        </View>
+            <PrimaryButton
+              label={t.submit}
+              disabled={!rating}
+              onPress={() => save(() => saveMyReview(code, rating, comment), t.reviewSaved)}
+            />
+          </View>
+        )
       ) : (
         <Link href={{ pathname: '/login', params: { next: returnTo } }} style={styles.loginLink}>
           {t.loginToReview}
@@ -222,6 +212,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
                   </View>
                 )}
               </View>
+              {r.mine && <TextButton label={t.delete} danger onPress={() => setDeleting(deleting === r.id ? null : r.id)} />}
               {session && !r.mine && (
                 <Pressable
                   onPress={() => toggleActions(actionsFor === r.id ? null : r.id)}
@@ -233,6 +224,15 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
                 </Pressable>
               )}
             </View>
+            {deleting === r.id && (
+              <View style={styles.actions}>
+                <Text style={styles.hint}>{t.deleteReviewConfirm}</Text>
+                <View style={styles.actionRow}>
+                  <TextButton label={t.delete} danger onPress={() => save(() => deleteMyReview(r.id), t.reviewDeleted)} />
+                  <TextButton label={t.cancel} onPress={() => setDeleting(null)} />
+                </View>
+              </View>
+            )}
             {actionsFor === r.id &&
               (confirmBlock ? (
                 <View style={styles.actions}>
@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   counter: { ...font.caption, color: color.ink3, alignSelf: 'flex-end', marginTop: space.xs },
-  formActions: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   primary: {
     minHeight: 44,
     justifyContent: 'center',

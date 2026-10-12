@@ -68,7 +68,8 @@ def test_deleting_a_review_deletes_its_translations(client, monkeypatch):
     monkeypatch.setattr(translate, "llm_translate", fake_llm([]))
     client.put("/restaurants/21/reviews/mine", json={"rating": 4, "comment": "Très bon"}, headers=token(ALICE))
     reviews(client)
-    client.delete("/restaurants/21/reviews/mine", headers=token(ALICE))
+    rid = client.get("/restaurants/21/reviews", headers=token(ALICE)).json()["reviews"][0]["id"]
+    assert client.delete(f"/reviews/{rid}", headers=token(ALICE)).status_code == 204
     with psycopg.connect(TEST_DB) as conn:
         assert conn.execute("SELECT count(*) FROM review_translation").fetchone()[0] == 0
 
