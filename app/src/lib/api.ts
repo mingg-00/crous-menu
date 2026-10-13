@@ -12,6 +12,7 @@ export type Restaurant = {
   distance_km: number;
   latitude: number;
   longitude: number;
+  closed: boolean; // e.g. closed for a year of renovation: the hours say so and no menus are published
 };
 
 export type Menu = {

@@ -201,6 +201,7 @@ export default function Nearby() {
                 <Text style={styles.distance}>{formatDistance(item.distance_km)}</Text>
                 {/* Nearly every place is a "Restaurant"; only the exceptions (Cafétéria, ...) say something. */}
                 {item.type && item.type !== 'Restaurant' && <Text style={styles.type}>{item.type}</Text>}
+                {item.closed && <Text style={styles.closed}>{t.closed}</Text>}
                 {summary[item.code]?.rating && <RatingText rating={summary[item.code].rating!} style={styles.rating} />}
               </View>
               {summary[item.code]?.preview && (
@@ -221,6 +222,7 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: MAX_WIDTH, alignSelf: 'center', padding: space.lg, gap: space.md },
   header: { gap: space.md, marginBottom: space.xs },
   heading: { ...font.heading, color: color.ink },
+  closed: { ...font.caption, fontWeight: '700', color: color.ink, backgroundColor: color.line, paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill, overflow: 'hidden' },
   demo: { ...font.caption, fontWeight: '700', color: color.ink, backgroundColor: '#FFF4C2', padding: space.sm, borderRadius: radius.sm },
   note: { padding: space.md, gap: space.sm, backgroundColor: color.brandTint, borderRadius: radius.md },
   noteText: { ...font.body, fontSize: 15, color: color.ink2 },

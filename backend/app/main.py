@@ -86,6 +86,15 @@ def distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 6371 * 2 * math.asin(math.sqrt(a))
 
 
+GROCERY = 3  # upstream type "Épicerie": only kept when it publishes menus (some sell hot lunches, e.g. Market' BUST)
+_CLOSURE = re.compile(r"\bferm(é|e|eture)\b", re.I)
+
+
+async def publishes_menus(code: int) -> bool:
+    """Whether upstream has any menu from today on (one call returns them all)."""
+    return bool(await upstream(f"/restaurants/{code}/menu", ttl=3600))
+
+
 def is_student_place(r: dict) -> bool:
     # ponytail: name check because upstream types some staff canteens as plain "Restaurant"
     # (e.g. "Restaurant administratif Le Haut-Carré"); drop it if upstream fixes the typing.
@@ -103,11 +112,19 @@ async def nearby(
     located = [
         (distance_km(lat, lng, r["latitude"], r["longitude"]), r)
         for r in restaurants
-        if r.get("latitude") is not None and r.get("longitude") is not None and is_student_place(r)
+        if r.get("latitude") is not None
+        and r.get("longitude") is not None
+        and (is_student_place(r) or (r.get("type") or {}).get("code") == GROCERY)
     ]
     ranked = sorted(located, key=lambda t: t[0])
     # The nearest `limit`, plus the rest of the city. ponytail: capped at 30 (/restaurants/today's limit); Paris has more.
     ranked = [t for i, t in enumerate(ranked) if i < limit or t[0] <= within_km][: max(limit, 30)]
+    # Menus decide the two cases the free-text data can't: groceries without menus are dropped, and a place whose
+    # hours mention a closure counts as closed only while it has no menus (strike notices stay in the text for weeks).
+    # Only those few places cost a call, cached for an hour.
+    doubtful = [r for _, r in ranked if (r.get("type") or {}).get("code") == GROCERY or _CLOSURE.search(" ".join(r.get("horaires") or []))]
+    has_menus = dict(zip((r["code"] for r in doubtful), await asyncio.gather(*(publishes_menus(r["code"]) for r in doubtful))))
+    ranked = [(d, r) for d, r in ranked if has_menus.get(r["code"], True) or (r.get("type") or {}).get("code") != GROCERY]
     return [
         {
             "code": r["code"],
@@ -119,6 +136,7 @@ async def nearby(
             "distance_km": round(d, 2),
             "latitude": r["latitude"],  # for the map
             "longitude": r["longitude"],
+            "closed": not has_menus.get(r["code"], True),
         }
         for d, r in ranked
     ]

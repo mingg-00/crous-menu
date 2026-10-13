@@ -46,6 +46,23 @@ def test_nearby_within_km_adds_the_rest_of_the_city_beyond_limit(monkeypatch):
     assert [r["code"] for r in client.get("/restaurants/nearby", params={**near, "within_km": 20}).json()] == [21, 23]  # not Pau, 160 km
 
 
+def test_nearby_keeps_groceries_with_menus_and_flags_closed_places(monkeypatch):
+    bust = {**MARKET, "code": 1660}  # grocery that sells lunches
+    moovy = {**MARKET, "code": 1594, "nom": "Crous Moovy Market' #2"}  # grocery without menus
+    forum = {**AMAZONE, "code": 17, "nom": "Crous Cafet' le Forum", "horaires": ["Fermeture du Crous Forum pour 1 an"]}
+    strike = {**AMAZONE, "code": 43, "nom": "Cafet' des Lettres", "horaires": ["Fermeture exceptionnelle du 29 septembre"]}
+    saturday = {**AMAZONE, "code": 1091, "nom": "Cafétéria I.U.T", "horaires": ["8h00 à 16h00 (fermé le samedi)"]}
+    up, calls = fake_upstream({
+        "/restaurants": [AMAZONE, bust, moovy, forum, strike, saturday],
+        "/restaurants/1660/menu": [MENU], "/restaurants/43/menu": [MENU], "/restaurants/1091/menu": [MENU],
+        "/restaurants/17/menu": [], "/restaurants/1594/menu": [],
+    })
+    monkeypatch.setattr(main, "upstream", up)
+    body = TestClient(main.app).get("/restaurants/nearby", params={"lat": 44.80, "lng": -0.60}).json()
+    assert {r["code"]: r["closed"] for r in body} == {21: False, 1660: False, 17: True, 43: False, 1091: False}
+    assert "/restaurants/21/menu" not in calls  # plain restaurants cost no extra call
+
+
 def test_menu_converts_iso_date_and_404s_when_missing(monkeypatch):
     up, calls = fake_upstream({"/restaurants/21/menu/06-10-2026": MENU})
     monkeypatch.setattr(main, "upstream", up)

@@ -28,6 +28,7 @@ const CSS = `
 .ru-rating { font: 700 12px/1 system-ui, sans-serif; color: ${color.ink}; background: #fff; border-radius: 999px; padding: 3px 7px; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .ru-rating::first-letter { color: ${color.star}; }
 .ru-pin { width: 14px; height: 14px; border-radius: 50%; background: ${color.brand}; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.ru-pin-closed { background: ${color.ink3}; }
 .ru-label { font: 600 12px/1.2 system-ui, sans-serif; color: ${color.ink}; background: rgba(255,255,255,.92); padding: 2px 6px; border-radius: 6px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Phones: only the nearest places keep their name on the map, the rest overlap; the list below names them all. */
 @media (max-width: 599px) { .ru-label-minor { display: none; } }
@@ -43,11 +44,11 @@ function ensureCss() {
 }
 
 /** Pin with the restaurant's name, and its star rating above it once someone has reviewed. */
-function markerElement(name: string, rating: Rating, minorLabel: boolean) {
+function markerElement(name: string, rating: Rating, minorLabel: boolean, closed: boolean) {
   const el = document.createElement('button');
   el.className = 'ru-marker';
   el.type = 'button';
-  el.setAttribute('aria-label', rating ? `${name}, ${ratingLabel(rating)}` : name);
+  el.setAttribute('aria-label', [name, closed && t.closed, rating && ratingLabel(rating)].filter(Boolean).join(', '));
   if (rating) {
     const badge = document.createElement('span');
     badge.className = 'ru-rating';
@@ -56,7 +57,7 @@ function markerElement(name: string, rating: Rating, minorLabel: boolean) {
     el.append(badge);
   }
   const pin = document.createElement('span');
-  pin.className = 'ru-pin';
+  pin.className = closed ? 'ru-pin ru-pin-closed' : 'ru-pin';
   const label = document.createElement('span');
   label.className = minorLabel ? 'ru-label ru-label-minor' : 'ru-label';
   label.textContent = name; // textContent, never innerHTML: names come from an external API
@@ -112,7 +113,7 @@ export function RestaurantMap({ center, showUser, restaurants, summary, onSelect
   useEffect(() => {
     markers.current.forEach((m) => m.remove());
     markers.current = restaurants.map((r, i) => {
-      const el = markerElement(r.nom, summary[r.code]?.rating ?? null, i >= LABELED_ON_PHONES);
+      const el = markerElement(r.nom, summary[r.code]?.rating ?? null, i >= LABELED_ON_PHONES, r.closed);
       el.addEventListener('click', () => onSelect(r));
       return new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([r.longitude, r.latitude]).addTo(map.current!);
     });
