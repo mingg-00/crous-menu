@@ -314,7 +314,11 @@ def main_dish(menu: dict | None) -> str | None:
     lunch = next((m for m in (menu or {}).get("repas", []) if m["type"] == "midi"), None)
     if not lunch:
         return None
-    sections = [c for c in lunch["categories"] if _MAIN_SECTION.search(c["libelle"])] or lunch["categories"][1:2]
+    sections = (
+        [c for c in lunch["categories"] if _MAIN_SECTION.search(c["libelle"])]
+        or lunch["categories"][1:2]  # unknown names: the section after the starters
+        or lunch["categories"][:1]  # a single section ("Menu", "Snacking chaud et froid")
+    )
     for section in sections:
         for plat in section["plats"]:
             text = plat["libelle"].strip()

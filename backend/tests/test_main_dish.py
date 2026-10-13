@@ -28,3 +28,9 @@ def test_unknown_section_names_fall_back_to_the_second_section_and_no_lunch_is_n
     assert main_dish(lunch(("Entrées", ["Radis"]), ("Le coin du chef", ["Tajine de poulet"]))) == "Tajine de poulet"
     assert main_dish({"repas": [{"type": "soir", "categories": []}]}) is None
     assert main_dish(None) is None
+
+
+def test_a_single_section_is_used_whatever_its_name():
+    # Resto U' le Capu and Crous Market' La Soucoupe, 2026-10-13
+    assert main_dish(lunch(("Menu", ["Côte de porc", "Sauce moutarde estragon"]))) == "Côte de porc"
+    assert main_dish(lunch(("Snacking chaud et froid", ["Sandwichs de base et composés", "Paninis"]))) == "Sandwichs de base et composés"
