@@ -3,7 +3,9 @@
 name: Prewarm menu translations
 on:
   schedule:
-    - cron: "0 4 * * *" # 05:00/06:00 Paris; GitHub may start scheduled runs some minutes late
+    # Several runs: GitHub often starts scheduled runs hours late and Crous edits menus overnight. Lines already
+    # translated are skipped, so a repeat run takes ~20 s and costs almost nothing. 04:00-11:00 Paris.
+    - cron: "0 3,5,7,9 * * *"
   workflow_dispatch: # "Run workflow" button for a manual run
 jobs:
   prewarm:
