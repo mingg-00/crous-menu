@@ -6,8 +6,9 @@ import { useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { t } from '../lib/i18n';
+import { isInAppBrowser, openInExternalBrowser } from '../lib/inAppBrowser';
 import { supabase } from '../lib/supabase';
-import { color, font, MAX_WIDTH, space } from '../lib/theme';
+import { color, font, MAX_WIDTH, radius, space } from '../lib/theme';
 
 // Expo Go: exp://<host>/--/..., builds: crousapp://... — both must be in Supabase's Redirect URLs.
 const redirectTo = makeRedirectUri();
@@ -47,6 +48,9 @@ export default function Login() {
   const { next } = useLocalSearchParams<{ next?: string }>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inApp] = useState(isInAppBrowser);
+  const [manual, setManual] = useState(false); // this app can't be left automatically: show how to do it by hand
+  const [copied, setCopied] = useState(false);
 
   async function onPress() {
     setBusy(true);
@@ -66,6 +70,30 @@ export default function Login() {
     <View style={styles.container}>
       <Image source={require('../../assets/brand/mark.png')} style={styles.mark} accessibilityIgnoresInvertColors />
       <Text style={styles.heading}>{t.loginToReview}</Text>
+      {inApp && (
+        <View style={styles.inApp} role="alert">
+          <Text style={styles.inAppTitle}>{t.inAppTitle}</Text>
+          <Text style={styles.inAppText}>{t.inAppBody}</Text>
+          {manual ? (
+            <>
+              <Text style={styles.inAppText}>{t.inAppIos}</Text>
+              <Text style={styles.url} selectable>
+                {window.location.href}
+              </Text>
+              <Pressable
+                style={styles.secondary}
+                role="button"
+                onPress={() => navigator.clipboard?.writeText(window.location.href).then(() => setCopied(true), () => {})}>
+                <Text style={styles.secondaryText}>{copied ? t.linkCopied : t.copyLink}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable style={styles.primary} role="button" onPress={() => setManual(!openInExternalBrowser(window.location.href))}>
+              <Text style={styles.primaryText}>{t.openInBrowser}</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
       <Pressable style={styles.button} onPress={onPress} disabled={busy} accessibilityRole="button">
         <Image source={require('../../assets/brand/google-g.png')} style={styles.googleG} accessibilityIgnoresInvertColors />
         <Text style={styles.buttonText}>{t.continueWithGoogle}</Text>
@@ -97,5 +125,13 @@ const styles = StyleSheet.create({
   googleG: { width: 20, height: 20 },
   buttonText: { fontSize: 16, fontWeight: '500', color: '#1f1f1f' },
   error: { ...font.body, color: color.danger },
+  inApp: { padding: space.lg, gap: space.sm, backgroundColor: color.brandTint, borderRadius: radius.md },
+  inAppTitle: { ...font.bodyStrong, color: color.ink },
+  inAppText: { ...font.body, fontSize: 15, color: color.ink2 },
+  url: { ...font.caption, color: color.ink, backgroundColor: color.surface, padding: space.sm, borderRadius: radius.sm },
+  primary: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: radius.pill, backgroundColor: color.brand },
+  primaryText: { ...font.bodyStrong, color: '#fff' },
+  secondary: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: radius.pill, borderWidth: 1, borderColor: color.brand },
+  secondaryText: { ...font.bodyStrong, color: color.brandPressed },
   privacy: { ...font.caption, color: color.ink3, textAlign: 'center', textDecorationLine: 'underline' },
 });
