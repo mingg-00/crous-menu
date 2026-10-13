@@ -36,6 +36,16 @@ def test_nearby_sorts_by_distance_and_keeps_only_located_student_places(monkeypa
     assert (body[0]["latitude"], body[0]["longitude"]) == (AMAZONE["latitude"], AMAZONE["longitude"])
 
 
+def test_nearby_within_km_adds_the_rest_of_the_city_beyond_limit(monkeypatch):
+    downtown = {**AMAZONE, "code": 23, "nom": "Resto U' Victoire", "latitude": 44.8306, "longitude": -0.5728}  # ~4 km
+    up, _ = fake_upstream({"/restaurants": [PAU, AMAZONE, downtown]})
+    monkeypatch.setattr(main, "upstream", up)
+    client = TestClient(main.app)
+    near = {"lat": 44.80, "lng": -0.60, "limit": 1}
+    assert [r["code"] for r in client.get("/restaurants/nearby", params=near).json()] == [21]
+    assert [r["code"] for r in client.get("/restaurants/nearby", params={**near, "within_km": 20}).json()] == [21, 23]  # not Pau, 160 km
+
+
 def test_menu_converts_iso_date_and_404s_when_missing(monkeypatch):
     up, calls = fake_upstream({"/restaurants/21/menu/06-10-2026": MENU})
     monkeypatch.setattr(main, "upstream", up)

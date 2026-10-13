@@ -97,6 +97,7 @@ async def nearby(
     lat: float = Query(ge=-90, le=90),
     lng: float = Query(ge=-180, le=180),
     limit: int = Query(10, ge=1, le=50),
+    within_km: float = Query(0, ge=0, le=50, description="also include every restaurant this close, beyond `limit`"),
 ):
     restaurants = await upstream("/restaurants", ttl=6 * 3600) or []
     located = [
@@ -104,7 +105,9 @@ async def nearby(
         for r in restaurants
         if r.get("latitude") is not None and r.get("longitude") is not None and is_student_place(r)
     ]
-    ranked = sorted(located, key=lambda t: t[0])[:limit]
+    ranked = sorted(located, key=lambda t: t[0])
+    # The nearest `limit`, plus the rest of the city. ponytail: capped at 30 (/restaurants/today's limit); Paris has more.
+    ranked = [t for i, t in enumerate(ranked) if i < limit or t[0] <= within_km][: max(limit, 30)]
     return [
         {
             "code": r["code"],

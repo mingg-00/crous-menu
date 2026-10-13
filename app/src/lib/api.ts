@@ -53,7 +53,8 @@ async function get<T>(path: string): Promise<T | null> {
 }
 
 export async function fetchNearby(lat: number, lng: number) {
-  return (await get<Restaurant[]>(`/restaurants/nearby?lat=${lat}&lng=${lng}`)) ?? [];
+  // Nearest 10, or the whole city when it has more (Bordeaux: 15 within 10 km).
+  return (await get<Restaurant[]>(`/restaurants/nearby?lat=${lat}&lng=${lng}&within_km=20`)) ?? [];
 }
 
 /** Getting there and paying: address, translated opening hours, transit, payment methods, phone. */
