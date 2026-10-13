@@ -154,6 +154,7 @@ export default function Nearby() {
   return (
     <FlatList
       data={restaurants}
+      initialNumToRender={30} // the API returns at most 30; on the web the list grows with the page, so windowing never renders past the first batch
       keyExtractor={(r) => String(r.code)}
       refreshing={loading}
       onRefresh={load}
