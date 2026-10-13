@@ -108,12 +108,13 @@ def test_prewarm_sends_each_menu_as_its_own_batch_once_per_language(fakes, monke
     _, llm_calls = fakes
     near = {"code": 21, "nom": "Resto U", "type": {"code": 1}, "latitude": 44.8065, "longitude": -0.6032}
     far = {**near, "code": 7, "latitude": 43.3, "longitude": -0.37}  # Pau: outside the prewarm radius
+    crowd = [{**far, "code": 1000 + i} for i in range(80)]  # the real list has hundreds of places, not two
     lunch = lambda *lines: {"repas": [{"type": "midi", "categories": [{"libelle": lines[0], "plats": [{"code": 1, "libelle": l} for l in lines[1:]]}]}]}
     menus = {main.menu_path(21, main.today()): lunch("Entrées", "Taboulé", "Ferme"),
              main.menu_path(7, main.today()): lunch("Dessert", "Fruit")}
 
     async def upstream(path, ttl):
-        return [near, far] if path == "/restaurants" else menus.get(path)
+        return [near, far, *crowd] if path == "/restaurants" else menus.get(path)
 
     monkeypatch.setattr(main, "upstream", upstream)
     monkeypatch.setattr(main, "PREWARM_TOKEN", "secret")

@@ -292,7 +292,8 @@ async def prewarm(days: int = Query(7, ge=1, le=14), authorization: str | None =
     are skipped. Anything it misses (a menu edited later, a place farther away) still translates on demand."""
     if not PREWARM_TOKEN or authorization != f"Bearer {PREWARM_TOKEN}":
         raise HTTPException(401, "Bad prewarm token")
-    places = [r for r in await nearby(lat=TALENCE[0], lng=TALENCE[1], limit=50) if r["distance_km"] <= PREWARM_RADIUS_KM]
+    # Called as a function, so every parameter is passed: Query() defaults only resolve for HTTP requests.
+    places = [r for r in await nearby(lat=TALENCE[0], lng=TALENCE[1], limit=50, within_km=0) if r["distance_km"] <= PREWARM_RADIUS_KM]
     start = today()
     menus = []
     for offset in range(days):
