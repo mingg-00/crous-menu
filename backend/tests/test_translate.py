@@ -125,3 +125,14 @@ def test_prewarm_sends_each_menu_as_its_own_batch_once_per_language(fakes, monke
     assert first == {"places": 1, "menus": 1, "lines_sent": 3 * len(translate.LANGUAGES)}
     assert llm_calls == [["Entrées", "Taboulé", "Ferme"]] * len(translate.LANGUAGES)  # whole menu, in order
     assert asyncio.run(main.prewarm(days=1, authorization="Bearer secret"))["lines_sent"] == 0  # all cached now
+
+
+def test_daily_cap_stops_on_demand_llm_calls_but_not_prewarm(fakes, monkeypatch):
+    _, llm_calls = fakes
+    monkeypatch.setattr(translate, "ON_DEMAND_CALLS_PER_DAY", 2)
+    monkeypatch.setattr(translate, "_calls", (translate.date.min, 0))
+    results = run((["A"], "ko"), (["B"], "ko"), (["C"], "ko"))
+    assert llm_calls == [["A"], ["B"]]  # the third call is over the cap
+    assert results[2] == ({}, False)  # served untranslated, and not "pending" so the app stops polling
+    asyncio.run(translate.translate_now(["C"], "ko"))  # prewarm is exempt
+    assert llm_calls[-1] == ["C"]

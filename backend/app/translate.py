@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import date
 
 from openai import AsyncOpenAI
 
@@ -128,6 +129,23 @@ async def _translate_and_cache(texts: list[str], lang: str):
         _inflight.difference_update((t, lang) for t in texts)
 
 
+# Cost guard: on-demand translation runs whenever someone opens an untranslated menu, so a script requesting every
+# Crous menu in France in every language could drain the OpenAI balance. Capping the calls themselves (not requests
+# per IP: students on campus Wi-Fi share IPs) bounds that at ~$12/day. Prewarm doesn't count; normal days need far
+# fewer. ponytail: per process and reset on restart; fine for one instance.
+ON_DEMAND_CALLS_PER_DAY = 1000
+_calls: tuple[date, int] = (date.min, 0)
+
+
+def _allow_call() -> bool:
+    global _calls
+    day, n = _calls if _calls[0] == date.today() else (date.today(), 0)
+    _calls = (day, n + 1)
+    if n == ON_DEMAND_CALLS_PER_DAY:
+        log.warning("on-demand translation cap reached (%d calls today); serving untranslated text", n)
+    return n < ON_DEMAND_CALLS_PER_DAY
+
+
 async def translate_texts(texts: list[str], lang: str) -> tuple[dict[str, str], bool]:
     """Cached translations for `texts` (menu order, duplicates allowed), plus whether some are still pending.
 
@@ -143,6 +161,8 @@ async def translate_texts(texts: list[str], lang: str) -> tuple[dict[str, str], 
         return {}, False
     missing = [t for t in texts if t not in found]
     todo = [t for t in missing if (t, lang) not in _inflight]  # keep menu order: it gives the LLM context
+    if todo and not _allow_call():
+        return found, False  # over the daily cap: French until tomorrow's prewarm, and no pointless re-polling
     if todo:
         _inflight.update((t, lang) for t in todo)
         task = asyncio.create_task(_translate_and_cache(todo, lang))
@@ -187,6 +207,8 @@ async def translate_reviews(comments: dict[int, str], lang: str) -> tuple[dict[i
         return {}, False
     missing = {i: c for i, c in comments.items() if i not in found}
     todo = {i: c for i, c in missing.items() if (i, lang) not in _inflight_reviews}
+    if todo and not _allow_call():
+        return found, False  # over the daily cap: originals only
     if todo:
         _inflight_reviews.update((i, lang) for i in todo)
         task = asyncio.create_task(_translate_reviews_and_cache(todo, lang))
