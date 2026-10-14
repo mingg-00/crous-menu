@@ -12,9 +12,10 @@ import {
   type Reviews as ReviewsData,
 } from '../lib/api';
 import { lang, t } from '../lib/i18n';
-import { RatingText } from './RatingText';
 import { supabase } from '../lib/supabase';
 import { color, font, radius, shadow, space } from '../lib/theme';
+import { RatingText } from './RatingText';
+import { ReviewActionsSheet } from './ReviewActionsSheet';
 
 const MAX_COMMENT = 500; // same limit as the server
 const reviewDate = (day: string) => new Date(`${day}T12:00`).toLocaleDateString(lang, { month: 'short', day: 'numeric' });
@@ -52,8 +53,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [actionsFor, setActionsFor] = useState<number | null>(null); // review whose report/block row is open
-  const [confirmBlock, setConfirmBlock] = useState(false);
+  const [actionsFor, setActionsFor] = useState<number | null>(null); // review whose report/block sheet is open
   const [deleting, setDeleting] = useState<number | null>(null); // own review whose delete confirmation is open
   const [originals, setOriginals] = useState<Set<number>>(new Set()); // reviews switched back to the original text
   const translationPolls = useRef(0);
@@ -91,11 +91,6 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
     return () => clearTimeout(timer);
   }, [data, load]);
 
-  function toggleActions(id: number | null) {
-    setActionsFor(id);
-    setConfirmBlock(false);
-  }
-
   function toggleOriginal(id: number) {
     setOriginals((s) => {
       const next = new Set(s);
@@ -109,7 +104,7 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
     setNotice(null);
     try {
       await action();
-      toggleActions(null);
+      setActionsFor(null);
       setDeleting(null);
       await load();
       setNotice(doneMessage);
@@ -215,10 +210,9 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
               {r.mine && <TextButton label={t.delete} danger onPress={() => setDeleting(deleting === r.id ? null : r.id)} />}
               {session && !r.mine && (
                 <Pressable
-                  onPress={() => toggleActions(actionsFor === r.id ? null : r.id)}
+                  onPress={() => setActionsFor(r.id)}
                   accessibilityRole="button"
                   accessibilityLabel={t.more}
-                  accessibilityState={{ expanded: actionsFor === r.id }}
                   style={styles.moreHit}>
                   <Text style={styles.more}>⋯</Text>
                 </Pressable>
@@ -233,30 +227,16 @@ export function Reviews({ code, returnTo }: { code: number; returnTo: string }) 
                 </View>
               </View>
             )}
-            {actionsFor === r.id &&
-              (confirmBlock ? (
-                <View style={styles.actions}>
-                  <Text style={styles.hint}>{t.blockConfirm}</Text>
-                  <View style={styles.actionRow}>
-                    <TextButton label={t.block} danger onPress={() => save(() => blockAuthor(r.id), t.blockConfirm)} />
-                    <TextButton label={t.cancel} onPress={() => toggleActions(null)} />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.actions}>
-                  <Text style={styles.hint}>{t.reportReason}</Text>
-                  <TextButton label={t.reportSpam} onPress={() => save(() => reportReview(r.id, 'spam'), t.reportDone)} />
-                  <TextButton
-                    label={t.reportOffensive}
-                    onPress={() => save(() => reportReview(r.id, 'offensive'), t.reportDone)}
-                  />
-                  <TextButton label={t.block} danger onPress={() => setConfirmBlock(true)} />
-                  <TextButton label={t.cancel} onPress={() => toggleActions(null)} />
-                </View>
-              ))}
           </View>
         );
       })}
+
+      <ReviewActionsSheet
+        visible={actionsFor !== null}
+        onClose={() => setActionsFor(null)}
+        onReport={(reason) => actionsFor !== null && save(() => reportReview(actionsFor, reason), t.reportDone)}
+        onBlock={() => actionsFor !== null && save(() => blockAuthor(actionsFor), t.blockConfirm)}
+      />
     </View>
   );
 }
