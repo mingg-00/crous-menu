@@ -34,6 +34,16 @@ function BackButton({ canGoBack }: { canGoBack: boolean }) {
   );
 }
 
+// Cloudflare Web Analytics: cookieless visit counts for the web build. The token is public (it ships in the page).
+const CF_BEACON_TOKEN = 'a3f14f1b221c4ca18c3e06d9e83d18aa';
+if (Platform.OS === 'web' && typeof document !== 'undefined' && CF_BEACON_TOKEN) {
+  const s = document.createElement('script');
+  s.defer = true;
+  s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+  s.dataset.cfBeacon = JSON.stringify({ token: CF_BEACON_TOKEN, spa: true });
+  document.head.appendChild(s);
+}
+
 export default function Layout() {
   // Remount every screen on a language change so texts re-render and menus are re-fetched in the new language.
   const [current, setCurrent] = useState(lang);

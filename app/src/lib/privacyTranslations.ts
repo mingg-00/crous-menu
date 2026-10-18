@@ -13,11 +13,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Was wir nicht tun",
-      "Keine Werbung, keine Analysen, kein Tracking, kein Verkauf und keine Weitergabe von Daten zu Marketingzwecken."
+      "Keine Werbung, kein seitenübergreifendes Tracking, kein Verkauf und keine Weitergabe von Daten zu Marketingzwecken."
     ],
     [
       "Wer Daten für uns verarbeitet",
-      "• Supabase: Anmeldung und unsere Datenbank, Server in der EU (Paris).\n• OpenAI (USA): Menütexte und Bewertungskommentare zur Übersetzung sowie Bewertungskommentare zur automatischen Missbrauchsfilterung. Es werden keine Kontoinformationen gesendet. Gemäß der API-Richtlinie von OpenAI werden diese Daten nicht zum Trainieren seiner Modelle verwendet.\n• Render: betreibt unseren Server in der EU (Frankfurt).\n• Menüs stammen aus der öffentlichen CROUStillant-API; es werden keine personenbezogenen Daten dorthin gesendet."
+      "• Supabase: Anmeldung und unsere Datenbank, Server in der EU (Paris).\n• OpenAI (USA): Menütexte und Bewertungskommentare zur Übersetzung sowie Bewertungskommentare zur automatischen Missbrauchsfilterung. Es werden keine Kontoinformationen gesendet. Gemäß der API-Richtlinie von OpenAI werden diese Daten nicht zum Trainieren seiner Modelle verwendet.\n• Render: betreibt unseren Server in der EU (Frankfurt).\n• Cloudflare: hostet die Website und zählt Besuche (Web Analytics, ohne Cookies und ohne dich zu identifizieren).\n• Menüs stammen aus der öffentlichen CROUStillant-API; es werden keine personenbezogenen Daten dorthin gesendet."
     ],
     [
       "Warum (Rechtsgrundlage)",
@@ -51,11 +51,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Qué no hacemos",
-      "Sin anuncios, sin analíticas, sin seguimiento, sin venta ni intercambio de datos con fines de marketing."
+      "Sin anuncios, sin seguimiento entre sitios, sin venta ni cesión de datos con fines de marketing."
     ],
     [
       "Quién trata datos para nosotros",
-      "• Supabase: inicio de sesión y nuestra base de datos, servidores en la UE (París).\n• OpenAI (EE. UU.): textos de menús y comentarios de reseñas para traducción, y comentarios de reseñas para filtrado automático de abusos. No se envía información de la cuenta. Según la política de la API de OpenAI, estos datos no se utilizan para entrenar sus modelos.\n• Render: ejecuta nuestro servidor, en la UE (Fráncfort).\n• Los menús proceden de la API pública de CROUStillant; no se le envían datos personales."
+      "• Supabase: inicio de sesión y nuestra base de datos, servidores en la UE (París).\n• OpenAI (EE. UU.): textos de menús y comentarios de reseñas para traducción, y comentarios de reseñas para filtrado automático de abusos. No se envía información de la cuenta. Según la política de la API de OpenAI, estos datos no se utilizan para entrenar sus modelos.\n• Render: ejecuta nuestro servidor, en la UE (Fráncfort).\n• Cloudflare: aloja el sitio web y cuenta las visitas (Web Analytics, sin cookies y sin identificarte).\n• Los menús proceden de la API pública de CROUStillant; no se le envían datos personales."
     ],
     [
       "Por qué (base legal)",
@@ -89,11 +89,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Wat we niet doen",
-      "Geen advertenties, geen analytics, geen tracking, geen verkoop of delen van gegevens voor marketing."
+      "Geen advertenties, geen tracking over websites heen, geen verkoop of delen van gegevens voor marketing."
     ],
     [
       "Wie gegevens voor ons verwerkt",
-      "• Supabase: inloggen en onze database, servers in de EU (Parijs).\n• OpenAI (VS): menuteksten en beoordelingsopmerkingen voor vertaling, en beoordelingsopmerkingen voor automatische filtering op misbruik. Er wordt geen accountinformatie verzonden. Volgens het API-beleid van OpenAI worden deze gegevens niet gebruikt om zijn modellen te trainen.\n• Render: draait onze server, in de EU (Frankfurt).\n• Menu's komen uit de openbare CROUStillant API; er worden geen persoonsgegevens naartoe gestuurd."
+      "• Supabase: inloggen en onze database, servers in de EU (Parijs).\n• OpenAI (VS): menuteksten en beoordelingsopmerkingen voor vertaling, en beoordelingsopmerkingen voor automatische filtering op misbruik. Er wordt geen accountinformatie verzonden. Volgens het API-beleid van OpenAI worden deze gegevens niet gebruikt om zijn modellen te trainen.\n• Render: draait onze server, in de EU (Frankfurt).\n• Cloudflare: host de website en telt bezoeken (Web Analytics, zonder cookies en zonder je te identificeren).\n• Menu's komen uit de openbare CROUStillant API; er worden geen persoonsgegevens naartoe gestuurd."
     ],
     [
       "Waarom (rechtsgrond)",
@@ -127,11 +127,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Cosa non facciamo",
-      "Niente pubblicità, niente analytics, niente tracciamento, niente vendita o condivisione di dati per finalità di marketing."
+      "Niente pubblicità, niente tracciamento tra siti, niente vendita o condivisione di dati per finalità di marketing."
     ],
     [
       "Chi tratta i dati per nostro conto",
-      "• Supabase: accesso e nostro database, server nell’UE (Parigi).\n• OpenAI (USA): testi dei menu e commenti delle recensioni per la traduzione, e commenti delle recensioni per il filtro automatico degli abusi. Non viene inviata alcuna informazione sull’account. In base alla policy API di OpenAI, questi dati non vengono usati per addestrare i suoi modelli.\n• Render: esegue il nostro server, nell’UE (Francoforte).\n• I menu provengono dall’API pubblica CROUStillant; non le viene inviato alcun dato personale."
+      "• Supabase: accesso e nostro database, server nell’UE (Parigi).\n• OpenAI (USA): testi dei menu e commenti delle recensioni per la traduzione, e commenti delle recensioni per il filtro automatico degli abusi. Non viene inviata alcuna informazione sull’account. In base alla policy API di OpenAI, questi dati non vengono usati per addestrare i suoi modelli.\n• Render: esegue il nostro server, nell’UE (Francoforte).\n• Cloudflare: ospita il sito web e conta le visite (Web Analytics, senza cookie e senza identificarti).\n• I menu provengono dall’API pubblica CROUStillant; non le viene inviato alcun dato personale."
     ],
     [
       "Perché (base giuridica)",
@@ -165,11 +165,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "行わないこと",
-      "広告、アナリティクス、トラッキングはありません。マーケティング目的でデータを販売または共有することもありません。"
+      "広告、サイトをまたぐトラッキング、マーケティング目的でのデータの販売・共有は行いません。"
     ],
     [
       "当方のためにデータを処理する事業者",
-      "• Supabase：ログインおよび当方のデータベース。サーバーはEU（パリ）にあります。\n• OpenAI（USA）：メニューテキストとレビューコメントの翻訳、およびレビューコメントの自動的な不正利用フィルタリング。アカウント情報は送信されません。OpenAIのAPIポリシーに基づき、このデータがモデルのトレーニングに使用されることはありません。\n• Render：当サーバーを稼働させます。EU（フランクフルト）にあります。\n• メニューは公開されているCROUStillant APIから取得されます。個人データは送信されません。"
+      "• Supabase：ログインおよび当方のデータベース。サーバーはEU（パリ）にあります。\n• OpenAI（USA）：メニューテキストとレビューコメントの翻訳、およびレビューコメントの自動的な不正利用フィルタリング。アカウント情報は送信されません。OpenAIのAPIポリシーに基づき、このデータがモデルのトレーニングに使用されることはありません。\n• Render：当サーバーを稼働させます。EU（フランクフルト）にあります。\n• Cloudflare：ウェブサイトのホスティングと訪問数の計測（Web Analytics。Cookieを使わず、利用者を特定しません）。\n• メニューは公開されているCROUStillant APIから取得されます。個人データは送信されません。"
     ],
     [
       "理由（法的根拠）",
@@ -203,11 +203,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Vad vi inte gör",
-      "Inga annonser, ingen analys, ingen spårning, ingen försäljning eller delning av data för marknadsföring."
+      "Inga annonser, ingen spårning mellan webbplatser, ingen försäljning eller delning av data för marknadsföring."
     ],
     [
       "Vem behandlar data åt oss",
-      "• Supabase: inloggning och vår databas, servrar i EU (Paris).\n• OpenAI (USA): menytexter och recensionskommentarer för översättning, och recensionskommentarer för automatisk filtrering av missbruk. Ingen kontoinformation skickas. Enligt OpenAI:s API-policy används dessa data inte för att träna dess modeller.\n• Render: kör vår server, i EU (Frankfurt).\n• Menyer kommer från det offentliga CROUStillant-API:et; inga personuppgifter skickas dit."
+      "• Supabase: inloggning och vår databas, servrar i EU (Paris).\n• OpenAI (USA): menytexter och recensionskommentarer för översättning, och recensionskommentarer för automatisk filtrering av missbruk. Ingen kontoinformation skickas. Enligt OpenAI:s API-policy används dessa data inte för att träna dess modeller.\n• Render: kör vår server, i EU (Frankfurt).\n• Cloudflare: driftar webbplatsen och räknar besök (Web Analytics, utan cookies och utan att identifiera dig).\n• Menyer kommer från det offentliga CROUStillant-API:et; inga personuppgifter skickas dit."
     ],
     [
       "Varför (rättslig grund)",
@@ -241,11 +241,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "我們不會做的事",
-      "沒有廣告、沒有分析、沒有追蹤，也不會為了行銷而出售或分享資料。"
+      "不投放廣告、不進行跨網站追蹤，也不為行銷目的出售或分享資料。"
     ],
     [
       "誰為我們處理資料",
-      "• Supabase：登入和我們的資料庫，伺服器位於歐盟（巴黎）。\n• OpenAI（美國）：用於翻譯菜單文字和評論留言，以及對評論留言進行自動濫用內容過濾。不會傳送任何帳號資訊。依據 OpenAI 的 API 政策，這些資料不會用於訓練其模型。\n• Render：在歐盟（法蘭克福）執行我們的伺服器。\n• 菜單來自公開的 CROUStillant API；不會向其傳送任何個人資料。"
+      "• Supabase：登入和我們的資料庫，伺服器位於歐盟（巴黎）。\n• OpenAI（美國）：用於翻譯菜單文字和評論留言，以及對評論留言進行自動濫用內容過濾。不會傳送任何帳號資訊。依據 OpenAI 的 API 政策，這些資料不會用於訓練其模型。\n• Render：在歐盟（法蘭克福）執行我們的伺服器。\n• Cloudflare：託管網站並統計造訪次數（Web Analytics，不使用 Cookie，也不會識別你的身分）。\n• 菜單來自公開的 CROUStillant API；不會向其傳送任何個人資料。"
     ],
     [
       "為什麼（法律依據）",
@@ -279,11 +279,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Mida me ei tee",
-      "Meil ei ole reklaame, analüütikat ega jälgimist ning me ei müü ega jaga andmeid turunduse eesmärgil."
+      "Reklaame pole, saitideülest jälgimist pole, andmeid ei müüda ega jagata turunduse eesmärgil."
     ],
     [
       "Kes töötleb meie eest andmeid",
-      "• Supabase: sisselogimine ja meie andmebaas, serverid EL-is (Pariis).\n• OpenAI (USA): menüütekstid ja arvustuste kommentaarid tõlkimiseks ning arvustuste kommentaarid automaatseks kuritarvituste filtreerimiseks. Kontoteavet ei saadeta. OpenAI API poliitika kohaselt ei kasutata neid andmeid selle mudelite treenimiseks.\n• Render: käitab meie serverit EL-is (Frankfurt).\n• Menüüd pärinevad avalikust CROUStillant API-st; sinna ei saadeta isikuandmeid."
+      "• Supabase: sisselogimine ja meie andmebaas, serverid EL-is (Pariis).\n• OpenAI (USA): menüütekstid ja arvustuste kommentaarid tõlkimiseks ning arvustuste kommentaarid automaatseks kuritarvituste filtreerimiseks. Kontoteavet ei saadeta. OpenAI API poliitika kohaselt ei kasutata neid andmeid selle mudelite treenimiseks.\n• Render: käitab meie serverit EL-is (Frankfurt).\n• Cloudflare: majutab veebisaiti ja loendab külastusi (Web Analytics, ilma küpsisteta ja sind tuvastamata).\n• Menüüd pärinevad avalikust CROUStillant API-st; sinna ei saadeta isikuandmeid."
     ],
     [
       "Miks (õiguslik alus)",
@@ -317,11 +317,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "O que não fazemos",
-      "Sem anúncios, sem analytics, sem rastreamento, sem venda ou compartilhamento de dados para marketing."
+      "Sem anúncios, sem rastreamento entre sites, sem venda ou compartilhamento de dados para marketing."
     ],
     [
       "Quem processa dados para nós",
-      "• Supabase: login e nosso banco de dados, servidores na UE (Paris).\n• OpenAI (EUA): textos de cardápios e comentários de avaliações para tradução, e comentários de avaliações para filtragem automática de abuso. Nenhuma informação de conta é enviada. Segundo a política da API da OpenAI, esses dados não são usados para treinar seus modelos.\n• Render: executa nosso servidor, na UE (Frankfurt).\n• Os cardápios vêm da API pública CROUStillant; nenhum dado pessoal é enviado para ela."
+      "• Supabase: login e nosso banco de dados, servidores na UE (Paris).\n• OpenAI (EUA): textos de cardápios e comentários de avaliações para tradução, e comentários de avaliações para filtragem automática de abuso. Nenhuma informação de conta é enviada. Segundo a política da API da OpenAI, esses dados não são usados para treinar seus modelos.\n• Render: executa nosso servidor, na UE (Frankfurt).\n• Cloudflare: hospeda o site e conta as visitas (Web Analytics, sem cookies e sem identificar você).\n• Os cardápios vêm da API pública CROUStillant; nenhum dado pessoal é enviado para ela."
     ],
     [
       "Por quê (base legal)",
@@ -355,11 +355,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Hvad vi ikke gør",
-      "Ingen annoncer, ingen analyse, ingen sporing, intet salg eller deling af data til markedsføring."
+      "Ingen reklamer, ingen sporing på tværs af websteder, intet salg eller deling af data til markedsføring."
     ],
     [
       "Hvem behandler data for os",
-      "• Supabase: login og vores database, servere i EU (Paris).\n• OpenAI (USA): menutekster og anmeldelseskommentarer til oversættelse samt anmeldelseskommentarer til automatisk filtrering af misbrug. Ingen kontooplysninger sendes. I henhold til OpenAI's API-politik bruges disse data ikke til at træne deres modeller.\n• Render: kører vores server, i EU (Frankfurt).\n• Menuer kommer fra den offentlige CROUStillant API; der sendes ingen personoplysninger til den."
+      "• Supabase: login og vores database, servere i EU (Paris).\n• OpenAI (USA): menutekster og anmeldelseskommentarer til oversættelse samt anmeldelseskommentarer til automatisk filtrering af misbrug. Ingen kontooplysninger sendes. I henhold til OpenAI's API-politik bruges disse data ikke til at træne deres modeller.\n• Render: kører vores server, i EU (Frankfurt).\n• Cloudflare: hoster webstedet og tæller besøg (Web Analytics, uden cookies og uden at identificere dig).\n• Menuer kommer fra den offentlige CROUStillant API; der sendes ingen personoplysninger til den."
     ],
     [
       "Hvorfor (retsgrundlag)",
@@ -393,11 +393,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Czego nie robimy",
-      "Brak reklam, brak analityki, brak śledzenia, brak sprzedaży lub udostępniania danych do celów marketingowych."
+      "Bez reklam, bez śledzenia między witrynami, bez sprzedawania ani udostępniania danych do celów marketingowych."
     ],
     [
       "Kto przetwarza dane dla nas",
-      "• Supabase: logowanie i nasza baza danych, serwery w UE (Paryż).\n• OpenAI (USA): teksty menu i komentarze w recenzjach do tłumaczenia oraz komentarze w recenzjach do automatycznego filtrowania nadużyć. Żadne informacje o koncie nie są wysyłane. Zgodnie z zasadami API OpenAI dane te nie są używane do trenowania jego modeli.\n• Render: uruchamia nasz serwer, w UE (Frankfurt).\n• Menu pochodzą z publicznego API CROUStillant; żadne dane osobowe nie są do niego wysyłane."
+      "• Supabase: logowanie i nasza baza danych, serwery w UE (Paryż).\n• OpenAI (USA): teksty menu i komentarze w recenzjach do tłumaczenia oraz komentarze w recenzjach do automatycznego filtrowania nadużyć. Żadne informacje o koncie nie są wysyłane. Zgodnie z zasadami API OpenAI dane te nie są używane do trenowania jego modeli.\n• Render: uruchamia nasz serwer, w UE (Frankfurt).\n• Cloudflare: hostuje stronę internetową i liczy odwiedziny (Web Analytics, bez plików cookie i bez identyfikowania Cię).\n• Menu pochodzą z publicznego API CROUStillant; żadne dane osobowe nie są do niego wysyłane."
     ],
     [
       "Dlaczego (podstawa prawna)",
@@ -431,11 +431,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Čo nerobíme",
-      "Žiadne reklamy, žiadna analytika, žiadne sledovanie, žiadny predaj ani zdieľanie údajov na marketingové účely."
+      "Žiadne reklamy, žiadne sledovanie naprieč webmi, žiadny predaj ani zdieľanie údajov na marketingové účely."
     ],
     [
       "Kto pre nás spracúva údaje",
-      "• Supabase: prihlasovanie a naša databáza, servery v EÚ (Paríž).\n• OpenAI (USA): texty menu a komentáre k recenziám na preklad a komentáre k recenziám na automatické filtrovanie zneužívania. Neodosielajú sa žiadne informácie o účte. Podľa pravidiel API spoločnosti OpenAI sa tieto údaje nepoužívajú na trénovanie jej modelov.\n• Render: prevádzkuje náš server, v EÚ (Frankfurt).\n• Menu pochádzajú z verejného API CROUStillant; neposielajú sa doň žiadne osobné údaje."
+      "• Supabase: prihlasovanie a naša databáza, servery v EÚ (Paríž).\n• OpenAI (USA): texty menu a komentáre k recenziám na preklad a komentáre k recenziám na automatické filtrovanie zneužívania. Neodosielajú sa žiadne informácie o účte. Podľa pravidiel API spoločnosti OpenAI sa tieto údaje nepoužívajú na trénovanie jej modelov.\n• Render: prevádzkuje náš server, v EÚ (Frankfurt).\n• Cloudflare: hosťuje webovú stránku a počíta návštevy (Web Analytics, bez cookies a bez toho, aby vás identifikoval).\n• Menu pochádzajú z verejného API CROUStillant; neposielajú sa doň žiadne osobné údaje."
     ],
     [
       "Prečo (právny základ)",
@@ -469,11 +469,11 @@ export const PRIVACY_TRANSLATIONS: Record<string, [title: string, body: string][
     ],
     [
       "Neleri yapmıyoruz",
-      "Reklam yok, analiz yok, takip yok, pazarlama için veri satma veya paylaşma yok."
+      "Reklam yok, siteler arası izleme yok, verilerin pazarlama amacıyla satılması veya paylaşılması yok."
     ],
     [
       "Bizim için verileri kim işler",
-      "• Supabase: giriş ve veritabanımız, AB’deki sunucular (Paris).\n• OpenAI (ABD): çeviri için menü metinleri ve yorum metinleri, ayrıca otomatik kötüye kullanım filtrelemesi için yorum metinleri. Hiçbir hesap bilgisi gönderilmez. OpenAI’ın API politikasına göre bu veriler modellerini eğitmek için kullanılmaz.\n• Render: sunucumuzu çalıştırır, AB’de (Frankfurt).\n• Menüler herkese açık CROUStillant API’sinden gelir; bu API’ye hiçbir kişisel veri gönderilmez."
+      "• Supabase: giriş ve veritabanımız, AB’deki sunucular (Paris).\n• OpenAI (ABD): çeviri için menü metinleri ve yorum metinleri, ayrıca otomatik kötüye kullanım filtrelemesi için yorum metinleri. Hiçbir hesap bilgisi gönderilmez. OpenAI’ın API politikasına göre bu veriler modellerini eğitmek için kullanılmaz.\n• Render: sunucumuzu çalıştırır, AB’de (Frankfurt).\n• Cloudflare: web sitesini barındırır ve ziyaretleri sayar (Web Analytics, çerez kullanmadan ve sizi tanımlamadan).\n• Menüler herkese açık CROUStillant API’sinden gelir; bu API’ye hiçbir kişisel veri gönderilmez."
     ],
     [
       "Neden (hukuki dayanak)",

@@ -7,7 +7,7 @@ import { color, font, MAX_WIDTH, space } from '../lib/theme';
 // Fill in before publishing: GDPR requires the controller's identity and a contact address.
 const CONTROLLER = 'Minji KIM';
 const CONTACT_EMAIL = 'minji04@kyonggi.ac.kr';
-const UPDATED = '2026-10-12';
+const UPDATED = '2026-10-19';
 
 type Section = [title: string, body: string];
 
@@ -19,9 +19,9 @@ const en: Section[] = [
     '• Reports and blocks you make, so the reviews you reported or blocked stay hidden for you.\n' +
     '• Location: only used to sort restaurants by distance. Your coordinates are sent to our server for that request and are not stored. You can refuse location access; the app then sorts from the Talence campus.\n' +
     '• Your login session is kept on your device or in your browser.'],
-  ['What we don\'t do', 'No ads, no analytics, no tracking, no selling or sharing of data for marketing.'],
+  ['What we don\'t do', 'No ads, no cross-site tracking, no selling or sharing of data for marketing.'],
   ['Who processes data for us',
-    `• Supabase: login and our database, servers in the EU (Paris).\n• OpenAI (USA): menu texts and review comments for translation, and review comments for automatic abuse filtering. No account information is sent. Under OpenAI's API policy this data is not used to train its models.\n• Render: runs our server, in the EU (Frankfurt).\n• Menus come from the public CROUStillant API; no personal data is sent to it.`],
+    `• Supabase: login and our database, servers in the EU (Paris).\n• OpenAI (USA): menu texts and review comments for translation, and review comments for automatic abuse filtering. No account information is sent. Under OpenAI's API policy this data is not used to train its models.\n• Render: runs our server, in the EU (Frankfurt).\n• Cloudflare: hosts the website and counts visits (Web Analytics, without cookies and without identifying you).\n• Menus come from the public CROUStillant API; no personal data is sent to it.`],
   ['Why (legal basis)', 'To provide the service you sign up for (contract), and to keep reviews free of abuse (legitimate interest).'],
   ['How long', 'Your account, reviews, reports and blocks are kept until you delete your account. "Delete my account" in the app removes all of it immediately, including your login account and the translations of your comments.'],
   ['Your rights', `You can access, correct, export or delete your data, and object to its processing, by writing to ${CONTACT_EMAIL}. You can also complain to your data protection authority (in France: CNIL, cnil.fr).`],
@@ -37,9 +37,9 @@ const fr: Section[] = [
     '• Vos signalements et blocages, afin que les avis signalés ou bloqués restent masqués pour vous.\n' +
     '• Localisation : utilisée uniquement pour trier les restaurants par distance. Vos coordonnées sont envoyées à notre serveur pour cette requête et ne sont pas conservées. Vous pouvez refuser ; l\'application trie alors depuis le campus de Talence.\n' +
     '• Votre session de connexion est conservée sur votre appareil ou dans votre navigateur.'],
-  ['Ce que nous ne faisons pas', 'Pas de publicité, pas de mesure d\'audience, pas de pistage, aucune vente ni partage de données à des fins marketing.'],
+  ['Ce que nous ne faisons pas', 'Pas de publicité, pas de pistage entre sites, aucune vente ni partage de données à des fins marketing.'],
   ['Sous-traitants',
-    `• Supabase : connexion et base de données, serveurs dans l'UE (Paris).\n• OpenAI (États-Unis) : textes des menus et commentaires des avis pour la traduction, et commentaires des avis pour le filtrage automatique des abus. Aucune donnée de compte n'est envoyée. Selon la politique API d'OpenAI, ces données ne servent pas à entraîner ses modèles.\n• Render : hébergement de notre serveur, dans l'UE (Francfort).\n• Les menus proviennent de l'API publique CROUStillant ; aucune donnée personnelle ne lui est transmise.`],
+    `• Supabase : connexion et base de données, serveurs dans l'UE (Paris).\n• OpenAI (États-Unis) : textes des menus et commentaires des avis pour la traduction, et commentaires des avis pour le filtrage automatique des abus. Aucune donnée de compte n'est envoyée. Selon la politique API d'OpenAI, ces données ne servent pas à entraîner ses modèles.\n• Render : hébergement de notre serveur, dans l'UE (Francfort).\n• Cloudflare : hébergement du site web et comptage des visites (Web Analytics, sans cookies et sans vous identifier).\n• Les menus proviennent de l'API publique CROUStillant ; aucune donnée personnelle ne lui est transmise.`],
   ['Base légale', 'Fournir le service auquel vous vous inscrivez (contrat) et protéger les avis contre les abus (intérêt légitime).'],
   ['Durée de conservation', 'Votre compte, vos avis, signalements et blocages sont conservés jusqu\'à la suppression de votre compte. « Supprimer mon compte » dans l\'application efface immédiatement le tout, y compris votre compte de connexion et les traductions de vos commentaires.'],
   ['Vos droits', `Vous pouvez accéder à vos données, les rectifier, les exporter ou les supprimer, et vous opposer à leur traitement, en écrivant à ${CONTACT_EMAIL}. Vous pouvez aussi adresser une réclamation à la CNIL (cnil.fr).`],
@@ -55,9 +55,9 @@ const ko: Section[] = [
     '• 신고·차단 기록: 신고하거나 차단한 리뷰가 계속 보이지 않도록 저장합니다.\n' +
     '• 위치: 식당을 거리순으로 정렬할 때만 사용합니다. 좌표는 해당 요청에만 서버로 보내고 저장하지 않습니다. 위치 권한을 거부하면 탈랑스 캠퍼스를 기준으로 정렬합니다.\n' +
     '• 로그인 상태는 기기 또는 브라우저에 저장됩니다.'],
-  ['하지 않는 것', '광고, 이용 분석, 추적을 하지 않으며 마케팅 목적으로 정보를 판매하거나 공유하지 않습니다.'],
+  ['하지 않는 것', '광고와 사이트 간 추적을 하지 않으며, 마케팅 목적으로 정보를 판매하거나 공유하지 않습니다.'],
   ['처리를 맡기는 곳',
-    `• Supabase(로그인, 데이터베이스): EU(파리) 서버\n• OpenAI(미국): 번역할 메뉴 텍스트와 리뷰 코멘트, 부적절한 표현을 걸러내기 위한 리뷰 코멘트. 계정 정보는 보내지 않습니다. OpenAI API 정책에 따라 이 데이터는 모델 학습에 사용되지 않습니다.\n• Render: 서버 운영, EU(프랑크푸르트)\n• 메뉴는 공개 API인 CROUStillant에서 가져오며, 개인정보는 보내지 않습니다.`],
+    `• Supabase(로그인, 데이터베이스): EU(파리) 서버\n• OpenAI(미국): 번역할 메뉴 텍스트와 리뷰 코멘트, 부적절한 표현을 걸러내기 위한 리뷰 코멘트. 계정 정보는 보내지 않습니다. OpenAI API 정책에 따라 이 데이터는 모델 학습에 사용되지 않습니다.\n• Render: 서버 운영, EU(프랑크푸르트)\n• Cloudflare: 웹사이트 호스팅과 방문 수 집계(Web Analytics, 쿠키를 쓰지 않고 이용자를 식별하지 않음)\n• 메뉴는 공개 API인 CROUStillant에서 가져오며, 개인정보는 보내지 않습니다.`],
   ['처리 근거', '요청하신 서비스를 제공하기 위해(계약), 그리고 리뷰를 악용으로부터 보호하기 위해(정당한 이익) 처리합니다.'],
   ['보관 기간', '계정, 리뷰, 신고·차단 기록은 계정을 삭제할 때까지 보관합니다. 앱의 "계정 삭제"를 누르면 로그인 계정과 코멘트 번역을 포함해 모두 즉시 삭제됩니다.'],
   ['이용자의 권리', `${CONTACT_EMAIL}로 연락하시면 정보 열람, 정정, 내보내기, 삭제, 처리 거부를 요청할 수 있습니다. 개인정보 감독기관(프랑스: CNIL, 한국: 개인정보보호위원회)에 민원을 제기할 수도 있습니다.`],
